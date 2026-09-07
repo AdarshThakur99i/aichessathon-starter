@@ -517,20 +517,37 @@ function commit(from, to) {
   return isOurTurn() ? attempt(from, to) : queuePremove(from, to);
 }
 
-// Called once the engine has replied: take the front of the queue and play it. The engine's move
-// may have made it impossible, by taking the piece, blocking the path or pinning it. The rest of
-// the queue was chosen on the strength of this move happening, so it goes too rather than being
-// played out of a position nobody planned for.
+// Called once the engine has replied. Premoves come off the front until one of them is legal in
+// the position the engine has just left; that one is played and the rest stay queued.
+//
+// The engine's move can make a premove impossible by taking the piece, blocking its path or
+// pinning it. Such a premove is discarded on its own. Note that the ones behind it were chosen
+// from the position it would have produced, so playing them on regardless can put a piece
+// somewhere the player never planned; the alternative, dropping the whole queue over one
+// casualty, throws away moves they did make, and they asked for this one.
 function playPremove() {
-  const next = game.premoves.shift();
-  if (!next) return;
-  if (attempt(next.from, next.to, next.promotion)) return;
-  const abandoned = game.premoves.length;
-  game.premoves.length = 0;
-  el("status").textContent = abandoned
-    ? "Your move. That premove was no longer legal, so the queue was dropped."
-    : "Your move. The premove was no longer legal.";
-  drawBoard();
+  let skipped = 0;
+  while (game.premoves.length) {
+    const next = game.premoves.shift();
+    if (attempt(next.from, next.to, next.promotion)) {
+      // The engine is already thinking about the reply, so it owns the status line. The note
+      // under the board is free until its reply lands.
+      if (skipped) {
+        el("engine-note").textContent =
+          `skipped ${skipped} premove${skipped === 1 ? "" : "s"} that the last move made illegal`;
+      }
+      return;
+    }
+    skipped += 1;
+  }
+  // Nothing in the queue could be played, so it is the player's move and the status line stays.
+  if (skipped) {
+    el("status").textContent =
+      skipped === 1
+        ? "Your move. The premove was no longer legal."
+        : `Your move. None of the ${skipped} queued premoves were still legal.`;
+    drawBoard();
+  }
 }
 
 function onSquare(name) {
