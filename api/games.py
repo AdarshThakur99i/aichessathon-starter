@@ -29,7 +29,9 @@ RESULTS = {"won", "lost", "drawn"}
 
 def _record(payload: dict[str, object]) -> dict[str, object]:
     """Validate what the page sent. Anything unrecognised is dropped rather than stored."""
-    name = str(payload.get("player") or "").strip()
+    # Collapsed to single spaces: the folder is keyed on a slug that ignores spacing anyway, and
+    # the shown name is whatever was typed last, which should not be "ADARSH   THAKUR".
+    name = " ".join(str(payload.get("player") or "").split())
     if not name:
         raise ValueError("a player name is required")
     if len(name) > 40:

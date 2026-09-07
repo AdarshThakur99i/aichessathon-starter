@@ -30,7 +30,9 @@ import _ponder
 import move as move_api
 
 
-def _ponder_one(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]:
+def _ponder_one(
+    start_fen: str, moves: list[str], clock_ms: int, increment_ms: int
+) -> dict[str, object]:
     board = chess.Board(start_fen)
     for uci in moves[: move_api.MAX_MOVES]:
         candidate = chess.Move.from_uci(uci)
@@ -46,9 +48,13 @@ def _ponder_one(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, ob
 
     played = board.san(guess)
     ahead = [*moves, guess.uci()]
-    clock = min(int(clock_ms), _ponder.PONDER_CLOCK_MS)
+    # Half the engine's clock, capped. A ponder holds the engine lock for its whole search, and a
+    # real move arriving in the middle of one has to wait for it, so at 10 seconds a full-clock
+    # ponder was adding most of a second of lag to the reply the player was actually waiting
+    # for. Half the clock keeps the wait to a small fraction of what is left.
+    clock = min(int(clock_ms) // 2, _ponder.PONDER_CLOCK_MS)
     try:
-        reply = move_api._think(start_fen, ahead, clock)
+        reply = move_api._think(start_fen, ahead, clock, increment_ms)
     except ValueError:
         # The candidate ends the game, so there is no reply to file. Remembered as a dead end so
         # the same move is not offered again on the next call.
@@ -82,6 +88,7 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 (Vercel requires this exact
                     payload.get("start_fen") or chess.STARTING_FEN,
                     list(payload.get("moves") or []),
                     int(payload.get("time_left_ms") or 60_000),
+                    int(payload.get("increment_ms") or 0),
                 ),
             )
         except ValueError as failure:

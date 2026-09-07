@@ -158,16 +158,28 @@ const EXCUSES = [
   "I was thinking about lunch, not chess",
   "my clock was running faster than yours, I felt it",
   "rematch. I was only warming up",
+  "aaj shyd aapka luck aapke saath h",
+  "Tukka",
+  "khush reh",
+  "tum bhi kya yaad rkhoge",
 ];
+
+// Said once, when she loses a game in which her draw offer was turned down, before the excuse.
+const REVENGE = "thukra ke mera draw mera inteqam dekhoge";
+const REVENGE_MS = 4000;
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
 let typing = null;
+let followUp = null;
 
-// Reveal the line a character at a time, so she looks like she is saying it.
+// Reveal the line a character at a time, so she looks like she is saying it. Anything queued to
+// be said after an earlier line is dropped: a new line always wins.
 function say(text, mood = "happy") {
   if (typing) clearInterval(typing);
   typing = null;
+  if (followUp) clearTimeout(followUp);
+  followUp = null;
   const bubble = el("bot-say");
   const target = el("bot-text");
   if (!bubble || !target) return;
@@ -186,6 +198,15 @@ function say(text, mood = "happy") {
       bubble.classList.remove("typing");
     }
   }, 32);
+}
+
+// Say one thing, then another a few seconds later.
+function sayThen(first, firstMood, delay, second, secondMood) {
+  say(first, firstMood);
+  followUp = setTimeout(() => {
+    followUp = null;
+    say(second, secondMood);
+  }, delay);
 }
 
 // ---------------------------------------------------------------- clocks
@@ -228,7 +249,9 @@ function startTicking() {
     game.tickFrom = now;
     if (game.clock[side] <= 0) {
       game.clock[side] = 0;
-      finish(side === game.human ? "lost" : "won", "flag");
+      // Only the player is flagged here. The engine is charged what its search took, settled
+      // when its reply arrives, so the wall clock it shows while waiting cannot end the game.
+      if (side === game.human) finish("lost", "flag");
     }
     drawClocks();
   }, 100);
@@ -283,6 +306,7 @@ async function ponderWhileThinking() {
           start_fen: game.startFen,
           moves: game.moves,
           time_left_ms: Math.round(game.clock[engine]),
+          increment_ms: game.increment,
         }),
         signal: controller.signal,
       });
@@ -695,6 +719,11 @@ async function engineMove() {
   const engine = game.human === "white" ? "black" : "white";
   game.thinking = true;
   el("status").textContent = "drunkenmaster is thinking…";
+  // Her clock as her turn begins. She is charged the time the search itself took, as reported by
+  // the server, and not the round trip: the network, a cold start and any queue behind a ponder
+  // are not her thinking, in the same way a site does not charge a player for their lag. The
+  // ticking clock in the meantime is for show and is corrected when the reply lands.
+  const before = game.clock[engine];
   try {
     const response = await fetch("/api/move", {
       method: "POST",
@@ -702,18 +731,30 @@ async function engineMove() {
       body: JSON.stringify({
         start_fen: game.startFen,
         moves: game.moves,
-        time_left_ms: Math.round(game.clock[engine]),
+        time_left_ms: Math.round(before),
+        increment_ms: game.increment,
       }),
     });
     const data = await readJson(response);
+    const left = before - data.thinking_ms;
+    if (left <= 0) {
+      // Flagged on thinking alone. As over the board, a move made after the flag does not count.
+      game.clock[engine] = 0;
+      game.thinking = false;
+      drawClocks();
+      finish("won", "flag");
+      return;
+    }
     const move = game.chess.move(data.move);
     game.lastMove = move;
     game.moves.push(data.move);
-    chargeClock(engine);
+    game.clock[engine] = left + game.increment;
+    game.tickFrom = performance.now();
+    const searched = data.pondered ? data.searched_ms : data.thinking_ms;
     const lines = [
-      `last reply: ${data.san} in ${(data.thinking_ms / 1000).toFixed(1)}s, ` +
+      `last reply: ${data.san} in ${(searched / 1000).toFixed(1)}s, ` +
         `${data.nodes.toLocaleString()} positions` +
-        (data.pondered ? ", worked out on your time" : ""),
+        (data.pondered ? ", worked out on your time so it cost her nothing" : ""),
     ];
     // data.learned is set only when experience overrode the search's choice.
     if (data.learned) lines.push(data.learned);
@@ -732,6 +773,10 @@ async function engineMove() {
   } catch (failure) {
     game.thinking = false;
     el("status").textContent = `The engine could not reply: ${failure.message}`;
+    // The ticker no longer flags the engine, so a failed request must not leave resigning as the
+    // only way out. The game is not finished or saved, and so nothing is learned from a network
+    // fault; the player simply gets the door to a new game.
+    el("again").hidden = false;
   }
 }
 
@@ -739,7 +784,11 @@ function finish(result, termination) {
   if (game.over) return;
   el("draw-offer").hidden = true;
   // result is the player's, so a win for them is a loss for her.
-  if (result === "won") say(pick(EXCUSES), "sad");
+  if (result === "won") {
+    // She takes a refused draw personally, but only once, and only if she then lost.
+    if (game.drawRejected) sayThen(REVENGE, "sad", REVENGE_MS, pick(EXCUSES), "sad");
+    else say(pick(EXCUSES), "sad");
+  }
   else if (result === "lost") say("kuchu puchu~ good game", "happy");
   else say("a draw! we are both very strong", "happy");
   game.over = true;
@@ -814,6 +863,7 @@ el("setup").addEventListener("submit", (event) => {
     // A fifth of the starting clock, kept inside sensible bounds.
     lowAt: Math.min(20_000, Math.max(3_000, base * 200)),
     moves: [], selected: null, lastMove: null, premoves: [], begged: false,
+    drawRejected: false,
     // The draw plea is only offered when there is time to read it.
     base,
     over: false, thinking: false, timer: null, tickFrom: performance.now(),
@@ -842,7 +892,10 @@ el("draw-yes").addEventListener("click", () => {
 });
 const declineDraw = () => {
   el("draw-offer").hidden = true;
-  if (game && !game.over) say("fine, no draw. I am still winning inside", "sad");
+  if (game && !game.over) {
+    game.drawRejected = true;
+    say("fine, no draw. I am still winning inside", "sad");
+  }
 };
 el("draw-no").addEventListener("click", declineDraw);
 el("draw-offer").addEventListener("click", (event) => {

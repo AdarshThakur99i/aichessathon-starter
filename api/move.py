@@ -62,9 +62,16 @@ def _static_rank(board: chess.Board) -> Callable[[str], float]:
     return rank
 
 
-def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]:
+def _think(
+    start_fen: str, moves: list[str], clock_ms: int, increment_ms: int = 500
+) -> dict[str, object]:
     board = chess.Board(start_fen)
     agent._reset_for_new_game()
+    # The reset puts the engine back to assuming the competition's half-second increment, and
+    # because every request resets, it never gets to observe the real one from the clock the
+    # way it would in a rated game. At 10+0 that had it budgeting 0.4s a move it was not going
+    # to get back, which is most of why it flagged. So it is told the real increment outright.
+    agent._increment_s = max(0, int(increment_ms)) / 1000.0
     for uci in moves[:MAX_MOVES]:
         move = chess.Move.from_uci(uci)
         if move not in board.legal_moves:
@@ -84,7 +91,14 @@ def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]
     if ready and ready.get("move"):
         prepared = chess.Move.from_uci(str(ready["move"]))
         if prepared in board.legal_moves:
-            return {**ready, "pondered": True}
+            # The search happened on the player's time, so it costs the engine nothing now.
+            # The page charges thinking_ms, so that is zeroed; the real figure is kept for show.
+            return {
+                **ready,
+                "pondered": True,
+                "thinking_ms": 0,
+                "searched_ms": ready.get("thinking_ms", 0),
+            }
 
     agent._piece_count = chess.popcount(board.occupied)
     budget_clock = min(max(int(clock_ms), 1_000), MAX_CLOCK_MS)
@@ -131,6 +145,7 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 (Vercel requires this exact
                 payload.get("start_fen") or chess.STARTING_FEN,
                 list(payload.get("moves") or []),
                 int(payload.get("time_left_ms") or 60_000),
+                int(payload.get("increment_ms") or 0),
             )
             self._send(200, result)
         except ValueError as failure:
