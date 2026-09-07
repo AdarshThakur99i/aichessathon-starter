@@ -97,6 +97,26 @@ And the engine spends about a sixteenth of whatever clock it is told about, so t
 at `MAX_CLOCK_MS` to keep a move inside the function timeout. That costs strength; it is the price
 of running in a request.
 
+### Running it locally
+
+No Node and no Vercel account needed:
+
+```
+make serve                       # http://localhost:8000
+make serve PORT=3000
+python -m tools.serve --port 3000    # the same thing directly
+```
+
+`tools/serve.py` serves `public/` and hands the two API paths to the very same handler methods
+Vercel invokes, so local behaviour is the production code rather than a second implementation of
+it. Moves are serialised behind a lock, because the engine keeps its state in module globals and
+two concurrent searches would share a transposition table and a repetition history.
+
+Games are held in memory unless the storage variables below are set, so player folders empty when
+you stop the process. The page says as much when storage is unconfigured.
+
+`vercel dev` also works if you would rather use it, but it needs Node and a login.
+
 ### Deploying
 
 Import the repository on Vercel. No build step; `public/` is served statically and `api/*.py`

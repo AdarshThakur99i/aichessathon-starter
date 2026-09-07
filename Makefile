@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup play arena zip gate
+.PHONY: setup play arena zip gate serve
 
 setup:
 	uv sync
@@ -13,6 +13,9 @@ arena:
 
 zip:
 	uv run python -m harness.package
+
+serve:
+	uv run python -m tools.serve $(if $(PORT),--port $(PORT))
 
 gate:
 	uv run ruff check .
