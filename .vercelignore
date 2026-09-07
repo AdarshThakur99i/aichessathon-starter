@@ -1,0 +1,34 @@
+# What Vercel uploads and builds. The deployment is api/*.py plus public/, and the only dependency
+# any of it has is python-chess, which requirements.txt pins.
+#
+# pyproject.toml and uv.lock are excluded on purpose. They exist for local development and for
+# parity with the competition platform, which preinstalls torch, numba, onnxruntime and numpy.
+# Vercel's Python builder reads them in preference to requirements.txt and installs the lot, which
+# came to 337 MB per function and 1011 MB across the three routes, against a 500 MB cap. Nothing
+# reachable from a request imports any of those four: agent.py and every module under api/ need
+# python-chess and the standard library, and nothing else.
+pyproject.toml
+uv.lock
+
+# Local tooling and the competition harness. No request path reaches any of it.
+harness/
+baselines/
+tools/
+docs/
+.github/
+Makefile
+submission.zip
+
+# Prose, not code.
+AGENTS.md
+CLAUDE.md
+DEVELOPMENT.md
+README.md
+
+# Local artefacts.
+.venv/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+games/
+*.pgn
