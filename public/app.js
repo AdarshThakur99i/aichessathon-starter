@@ -118,6 +118,12 @@ function drawBoard() {
     lastMove: game.lastMove,
     premoves: game.premoves,
   });
+  // The paint rewrites every square's classes. If a piece is in the air, as it is when the
+  // engine's reply lands mid-drag, it would otherwise reappear on its square under the cursor.
+  if (drag?.ghost) {
+    squareCell(drag.from)?.classList.add("lifted");
+    if (drag.over) squareCell(drag.over)?.classList.add("over");
+  }
 }
 
 function drawMoves() {
@@ -403,12 +409,12 @@ function premoveTargets(board, square) {
     let r = rank + dr;
     while (onBoard(f, r)) {
       const name = squareAt(f, r);
-      const blocker = board.get(name);
-      if (blocker) {
-        // Stop at the first piece either way: ours blocks the ray, theirs can be taken.
-        if (blocker.color !== colour) found.push(name);
-        break;
-      }
+      // Our own piece ends the ray: it cannot move before this premove is played. Theirs does
+      // not. It may well move, which is exactly what a premove along this line is betting on, so
+      // the square it stands on and every square beyond it stay on offer. Stopping at the first
+      // enemy piece, as the rules of a real move would, is what made a bishop dragged to a square
+      // behind an enemy pawn snap straight back.
+      if (board.get(name)?.color === colour) break;
       found.push(name);
       f += df;
       r += dr;
@@ -535,7 +541,11 @@ function onSquare(name) {
   if (!game || game.over) return;
   if (game.selected && game.selected !== name && commit(game.selected, name)) return;
   const piece = position().get(name);
-  game.selected = piece && piece.color === game.human[0] ? name : null;
+  const ours = Boolean(piece && piece.color === game.human[0]);
+  // A click that neither moves nor picks a piece up cancels whatever is queued. That is how the
+  // big sites behave, and it is the only cancel a touchscreen has.
+  if (!ours) game.premoves.length = 0;
+  game.selected = ours ? name : null;
   drawBoard();
 }
 
@@ -605,6 +615,7 @@ function onPointerDown(event) {
     startX: event.clientX,
     startY: event.clientY,
     ghost: null,
+    over: null,
   };
   if (!canLift(drag.from)) return;
   // Keep receiving moves once the cursor leaves the square, and suppress text selection.
@@ -621,10 +632,11 @@ function onPointerMove(event) {
   }
   carry(event.clientX, event.clientY);
   const over = squareFromPoint(event.clientX, event.clientY);
+  drag.over = over && over !== drag.from ? over : null;
   const lit = el("board").querySelector(".sq.over");
-  if (lit?.dataset.square !== over) {
+  if (lit?.dataset.square !== drag.over) {
     lit?.classList.remove("over");
-    if (over && over !== drag.from) squareCell(over)?.classList.add("over");
+    if (drag.over) squareCell(drag.over)?.classList.add("over");
   }
 }
 
@@ -639,8 +651,9 @@ function onPointerUp(event) {
     return;
   }
   if (to && to !== from && commit(from, to)) return;
-  // Dropped back home, off the board, or somewhere illegal: put it down again.
-  game.selected = null;
+  // Dropped back where it came from, it stays in hand so a click can finish the move. Dropped
+  // off the board or somewhere it cannot go, it is put down.
+  game.selected = to === from ? from : null;
   drawBoard();
 }
 
@@ -1182,6 +1195,9 @@ for (const [type, listener] of [
   ["contextmenu", (event) => {
     if (!game) return;
     event.preventDefault();
+    // A long press on a touchscreen raises this too. With a piece in hand it must do nothing,
+    // or holding a piece for a moment before sliding it empties the queue you are adding to.
+    if (drag) return;
     game.premoves.length = 0;
     game.selected = null;
     drawBoard();
