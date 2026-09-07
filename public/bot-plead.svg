@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="drunkenmaster">
+  <circle cx="60" cy="60" r="59" fill="#232617"/>
+  <path fill="#43354f" d="M60 16c-22 0-34 15-34 35v24c0 11 4 19 9 23h50c5-4 9-12 9-23V51c0-20-12-35-34-35Z"/>
+  <path fill="#5b4870" d="M26 54c-8 4-12 13-11 25 1 10 4 17 9 21 3 2 6 0 6-4V56c0-3-2-4-4-2Z"/>
+  <path fill="#5b4870" d="M94 54c8 4 12 13 11 25-1 10-4 17-9 21-3 2-6 0-6-4V56c0-3 2-4 4-2Z"/>
+  <ellipse cx="60" cy="64" rx="26" ry="27" fill="#f7ddc3"/>
+  <ellipse cx="34" cy="67" rx="4" ry="6" fill="#f0cdad"/>
+  <ellipse cx="86" cy="67" rx="4" ry="6" fill="#f0cdad"/>
+  <path fill="#5b4870" d="M34 52c1-17 12-28 26-28s25 11 26 28c1 5-3 7-5 3-3-6-8-10-13-10-4 0-8 3-10 7-1 3-4 3-6 0-2-4-6-7-10-7-5 0-10 4-13 10-2 4-6 2-5-3Z"/>
+  <g fill="#a8c98d">
+    <circle cx="81" cy="35" r="3.2"/>
+    <path d="M77.5 40h7l1.2 4.5h-9.4z"/>
+  </g>
+  <g fill="none" stroke="#43354f" stroke-width="2" stroke-linecap="round">
+    <path d="M43 52q6 2 10 5"/><path d="M67 57q4-3 10-5"/>
+  </g>
+  <ellipse cx="49" cy="67" rx="7.5" ry="9.5" fill="#2c2436"/>
+  <ellipse cx="71" cy="67" rx="7.5" ry="9.5" fill="#2c2436"/>
+  <circle cx="46.4" cy="62.6" r="3" fill="#fff"/>
+  <circle cx="68.4" cy="62.6" r="3" fill="#fff"/>
+  <ellipse cx="50.5" cy="72" rx="3" ry="2" fill="#b79ada" opacity=".85"/>
+  <ellipse cx="72.5" cy="72" rx="3" ry="2" fill="#b79ada" opacity=".85"/>
+  <path fill="#8fc7e8" d="M43 76c2 0 3.2 4.2 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-2 1.2-6.2 3.2-6.2Z"/>
+  <path fill="#8fc7e8" d="M77 76c2 0 3.2 4.2 3.2 6.2a3.2 3.2 0 0 1-6.4 0c0-2 1.2-6.2 3.2-6.2Z"/>
+  <ellipse cx="37" cy="77" rx="6" ry="3.2" fill="#e98a8a" opacity=".6"/>
+  <ellipse cx="83" cy="77" rx="6" ry="3.2" fill="#e98a8a" opacity=".6"/>
+  <path d="M55 81q2.5-3 5 0t5 0" fill="none" stroke="#9c6250" stroke-width="2"
+        stroke-linecap="round"/>
+</svg>

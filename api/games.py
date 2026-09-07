@@ -16,6 +16,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import _learn
 import _store
 
 MAX_PGN_CHARS = 20_000
@@ -45,6 +46,27 @@ def _record(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
+def _learn_from(record: dict[str, object]) -> int:
+    """Fold a finished game into the engine's book, and report how many positions it touched.
+
+    The result stored on the record is from the player's point of view, so it is inverted here.
+    Never fatal: the game itself is already saved, and a book that failed to update is not worth
+    failing the request over.
+    """
+    points = {"won": 0.0, "lost": 1.0, "drawn": 0.5}.get(str(record.get("result")), 0.5)
+    engine_colour = "black" if record.get("colour") == "white" else "white"
+    moves = record.get("moves")
+    try:
+        return _learn.record_game(
+            str(record.get("start_fen") or ""),
+            [str(uci) for uci in moves] if isinstance(moves, list) else [],
+            engine_colour,
+            points,
+        )
+    except Exception:
+        return 0
+
+
 class handler(BaseHTTPRequestHandler):  # noqa: N801 (Vercel requires this exact name)
     def do_GET(self) -> None:
         try:
@@ -63,7 +85,12 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 (Vercel requires this exact
                 )
             else:
                 self._send(
-                    200, {"players": _store.players(), "persistent": _store.is_persistent()}
+                    200,
+                    {
+                        "players": _store.players(),
+                        "persistent": _store.is_persistent(),
+                        "learning": _learn.summary(),
+                    },
                 )
         except Exception as failure:
             self._send(500, {"error": f"{type(failure).__name__}: {failure}"})
@@ -74,7 +101,14 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 (Vercel requires this exact
             payload = json.loads(self.rfile.read(length) or b"{}")
             record = _record(payload)
             folder = _store.save_game(str(payload["player"]).strip(), record)
-            self._send(200, {"slug": folder, "persistent": _store.is_persistent()})
+            self._send(
+                200,
+                {
+                    "slug": folder,
+                    "persistent": _store.is_persistent(),
+                    "learned": _learn_from(record),
+                },
+            )
         except ValueError as failure:
             self._send(400, {"error": str(failure)})
         except Exception as failure:

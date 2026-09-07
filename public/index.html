@@ -8,57 +8,76 @@
 </head>
 <body>
 <header>
-  <h1><a href="#/">drunkenmaster</a></h1>
-  <nav>
-    <a href="#/" data-nav="play">Play</a>
-    <a href="#/players" data-nav="players">Players</a>
-  </nav>
+  <div class="bar">
+    <h1><a href="#/">drunkenmaster</a></h1>
+    <nav>
+      <a href="#/" data-nav="play">Play</a>
+      <a href="#/players" data-nav="players">Players</a>
+    </nav>
+  </div>
 </header>
 
 <main>
   <!-- Start a game -->
   <section id="view-setup" class="view">
-    <h2>New game</h2>
-    <form id="setup">
-      <label>Your name
-        <input id="name" name="name" maxlength="40" required autocomplete="nickname"
-               placeholder="e.g. adarsh">
-      </label>
-      <label>Time control
-        <select id="time-control">
-          <option value="60+0">1 min</option>
-          <option value="180+0">3 min</option>
-          <option value="180+2">3 min + 2s</option>
-          <option value="300+0" selected>5 min</option>
-          <option value="600+0">10 min</option>
-          <option value="900+10">15 min + 10s</option>
-        </select>
-      </label>
-      <label>You play
-        <select id="colour">
-          <option value="white" selected>White</option>
-          <option value="black">Black</option>
-          <option value="random">Random</option>
-        </select>
-      </label>
-      <button type="submit">Start</button>
-    </form>
-    <p class="note" id="storage-note"></p>
+    <div class="intro">
+      <img class="intro-face" src="/bot.svg" width="120" height="120" alt="">
+      <div>
+        <h2>A self-learning chess AI</h2>
+        <p class="tagline">She learns from every game you play against her.</p>
+      </div>
+    </div>
+    <div class="setup-column">
+      <h3>New game</h3>
+      <form id="setup">
+        <label>Your name
+          <input id="name" name="name" maxlength="40" required autocomplete="nickname"
+                 placeholder="e.g. adarsh">
+        </label>
+        <label>Time control
+          <select id="time-control">
+            <option value="10+0">10 sec</option>
+            <option value="30+0">30 sec</option>
+            <option value="60+0">1 min</option>
+            <option value="180+0">3 min</option>
+            <option value="180+2">3 min + 2s</option>
+            <option value="300+0" selected>5 min</option>
+            <option value="600+0">10 min</option>
+            <option value="900+10">15 min + 10s</option>
+          </select>
+        </label>
+        <label>You play
+          <select id="colour">
+            <option value="white" selected>White</option>
+            <option value="black">Black</option>
+            <option value="random">Random</option>
+          </select>
+        </label>
+        <button type="submit">Start</button>
+      </form>
+      <p class="note" id="storage-note"></p>
+    </div>
   </section>
 
   <!-- The game -->
   <section id="view-game" class="view" hidden>
     <div class="game">
+      <div class="bot">
+        <img class="bot-face" id="bot-face" src="/bot.svg" width="120" height="120"
+             alt="drunkenmaster">
+        <div class="bubble" id="bot-say" hidden><span id="bot-text"></span></div>
+      </div>
       <div class="board-side">
-        <div class="clock" id="clock-top"><span class="who"></span><span class="time"></span></div>
+        <div class="clock" id="clock-top"><span class="who"></span><span class="time"><span class="mm"></span><span class="frac"></span></span></div>
         <div id="board" class="board" role="grid" aria-label="chess board"></div>
-        <div class="clock" id="clock-bottom"><span class="who"></span><span class="time"></span></div>
+        <div class="clock" id="clock-bottom"><span class="who"></span><span class="time"><span class="mm"></span><span class="frac"></span></span></div>
       </div>
       <aside class="panel">
         <p class="status" id="status">Your move.</p>
         <ol id="moves" class="moves"></ol>
         <div class="actions">
           <button id="resign" type="button">Resign</button>
+          <button id="review" type="button" hidden>Replay</button>
           <button id="again" type="button" hidden>New game</button>
         </div>
         <p class="note" id="engine-note"></p>
@@ -67,6 +86,28 @@
   </section>
 
   <!-- Player folders -->
+  <!-- Stepping through a finished game. Used by the replay button and by the folders. -->
+  <section id="view-replay" class="view" hidden>
+    <h2 id="replay-title">Replay</h2>
+    <p class="note" id="replay-note"></p>
+    <div class="game replay">
+      <div class="board-side">
+        <div id="replay-board" class="board static" role="grid" aria-label="replay board"></div>
+      </div>
+      <aside class="panel">
+        <ol id="replay-moves" class="moves"></ol>
+        <div class="actions steps">
+          <button id="replay-first" type="button" title="First move">&#124;&laquo;</button>
+          <button id="replay-prev" type="button" title="Previous move">&laquo;</button>
+          <button id="replay-play" type="button">Play</button>
+          <button id="replay-next" type="button" title="Next move">&raquo;</button>
+          <button id="replay-last" type="button" title="Last move">&raquo;&#124;</button>
+        </div>
+        <button id="replay-back" type="button">Back</button>
+      </aside>
+    </div>
+  </section>
+
   <section id="view-players" class="view" hidden>
     <h2>Players</h2>
     <p class="note">Every game anyone has played is filed under their name.</p>
@@ -81,9 +122,19 @@
 </main>
 
 <footer>
-  <p>The engine is the same <code>agent.py</code> entered in the AI Chessathon. It thinks for about
-     four seconds a move here, less than the two minutes a side it gets in rated play.</p>
+<p>Made by Adarsh Thakur</p>
 </footer>
+
+<!-- Shown when the player has a mate on the board and the engine would rather not find out. -->
+<div class="modal" id="draw-offer" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="draw-text">
+    <button class="modal-close" id="draw-no" type="button" aria-label="No thanks">&times;</button>
+    <img class="modal-face" src="/bot-plead.svg" width="120" height="120" alt="">
+    <p class="modal-text" id="draw-text">kuchu puchu draw ??</p>
+    <button class="modal-yes" id="draw-yes" type="button">Yes, draw</button>
+    <p class="modal-note">Your clock is still running.</p>
+  </div>
+</div>
 
 <script type="module" src="/app.js"></script>
 </body>

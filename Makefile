@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup play arena zip gate serve
+.PHONY: setup play arena zip gate serve harvest learn
 
 setup:
 	uv sync
@@ -16,6 +16,14 @@ zip:
 
 serve:
 	uv run python -m tools.serve $(if $(PORT),--port $(PORT))
+
+harvest:
+	uv run python -m tools.harvest
+
+# The offline learning loop. STOCKFISH labels the positions; it never ships.
+learn: harvest
+	@test -n "$(STOCKFISH)" || { echo "usage: make learn STOCKFISH=/path/to/stockfish"; exit 1; }
+	uv run python -m tools.tune_weights --stockfish "$(STOCKFISH)" --pgn games/corpus.pgn --positions $(or $(POSITIONS),20000) --ridge 1.0 --anchor-material
 
 gate:
 	uv run ruff check .

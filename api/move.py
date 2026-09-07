@@ -22,18 +22,40 @@ from __future__ import annotations
 import json
 import sys
 import time
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 import chess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import _learn
+import _ponder
+
 import agent
 
 # Keep the engine's own budget under the function timeout. It spends about a sixteenth of the
 # clock it is told about, so this ends up near four seconds of thinking per move.
 MAX_CLOCK_MS = 64_000
 MAX_MOVES = 600
+
+
+def _static_rank(board: chess.Board) -> Callable[[str], float]:
+    """Score a candidate move by the engine's own static evaluation of where it leads.
+
+    Only used when the book has run out of tried moves and has to pick something new, so that
+    exploring is at least guided by the engine's judgement. evaluate() reports from the point of
+    view of the side to move, and after our own move that is the opponent, hence the negation.
+    """
+
+    def rank(uci: str) -> float:
+        board.push(chess.Move.from_uci(uci))
+        try:
+            return -agent.evaluate(board)
+        finally:
+            board.pop()
+
+    return rank
 
 
 def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]:
@@ -51,6 +73,15 @@ def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]
     if board.is_game_over(claim_draw=False):
         raise ValueError("the game is already over")
 
+    # A reply worked out while the player was thinking. The cache is keyed on this exact game, so
+    # a hit is a reply to this position rather than to one that resembles it; the legality check
+    # is belt and braces.
+    ready = _ponder.take(start_fen, moves)
+    if ready and ready.get("move"):
+        prepared = chess.Move.from_uci(str(ready["move"]))
+        if prepared in board.legal_moves:
+            return {**ready, "pondered": True}
+
     agent._piece_count = chess.popcount(board.occupied)
     budget_clock = min(max(int(clock_ms), 1_000), MAX_CLOCK_MS)
     started = time.perf_counter()
@@ -60,6 +91,14 @@ def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]
     move = chess.Move.from_uci(uci)
     if move not in board.legal_moves:
         raise ValueError(f"the engine returned an illegal move: {uci}")
+
+    # What earlier games in this interface suggest. It can only ever name another legal move, and
+    # the result is checked again here anyway rather than trusted.
+    uci, learned = _learn.advise(board, uci, _static_rank(board))
+    move = chess.Move.from_uci(uci)
+    if move not in board.legal_moves:
+        raise ValueError(f"the learned book returned an illegal move: {uci}")
+
     san = board.san(move)
     board.push(move)
     finish = board.outcome(claim_draw=True)
@@ -69,6 +108,8 @@ def _think(start_fen: str, moves: list[str], clock_ms: int) -> dict[str, object]
         "fen": board.fen(),
         "thinking_ms": round(spent * 1000),
         "nodes": agent._nodes,
+        "learned": learned,
+        "pondered": False,
         "over": finish is not None,
         "termination": finish.termination.name.lower() if finish else None,
         "winner": ("white" if finish.winner else "black")

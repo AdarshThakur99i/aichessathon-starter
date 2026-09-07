@@ -1,0 +1,7 @@
+The board uses the cburnett piece set, by Colin M.L. Burnett.
+
+Source: https://github.com/lichess-org/lila/tree/master/public/piece/cburnett
+Licence: GPLv2+ / BSD / CC-BY-SA 3.0, at your option.
+
+Vendored here so the board renders with no network. Development tooling for the local play
+page only; nothing in public/ is part of the agent.py submission.

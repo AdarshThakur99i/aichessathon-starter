@@ -1,69 +1,122 @@
-:root {
-  --ink: #1b1a17;
-  --paper: #f6f4ef;
-  --muted: #6d675d;
-  --line: #ddd7cb;
-  --light: #ebdfc8;
-  --dark: #b08a5f;
-  --accent: #3f6f4a;
-  --accent-soft: rgba(63, 111, 74, 0.22);
-  --danger: #9c3b2e;
-  --shadow: 0 1px 2px rgba(27, 26, 23, 0.08), 0 8px 24px rgba(27, 26, 23, 0.06);
-}
+/* One dark palette, matching the tournament site. The board is sage on cream, the numbers are
+   monospaced so clocks and move lists do not jitter, and prose stays in the system sans. */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #ece8e1;
-    --paper: #17161a;
-    --muted: #9b958c;
-    --line: #2e2c31;
-    --light: #b9a98f;
-    --dark: #6f5942;
-    --accent: #7fb98d;
-    --accent-soft: rgba(127, 185, 141, 0.24);
-    --danger: #d98b7d;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
+:root {
+  color-scheme: dark;
+
+  --bg: #14150f;
+  --raised: #1c1e16;
+  --ink: #e7e9dc;
+  --muted: #8d9280;
+  --line: #2b2e23;
+
+  --sq-light: #ecefd9;
+  --sq-dark: #7f9c6d;
+
+  --accent: #a8c98d;
+  --accent-soft: rgba(168, 201, 141, 0.3);
+  --danger: #dd6b5a;
+
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+
+  /* One page width and one gutter for the whole site. --column is the content width the header,
+     the page and the footer all share, so the three of them line up rather than each being
+     centred in a box of its own size. */
+  --page: 1120px;
+  --gutter: clamp(1rem, 4vw, 3rem);
+  --column: calc(var(--page) - 2 * var(--gutter));
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 22px 48px rgba(0, 0, 0, 0.4);
 }
 
 * { box-sizing: border-box; }
 
+/* Reserve the scrollbar's width whether or not it is showing, so the centre of the page does not
+   move when a view happens to be tall enough to scroll. */
+html { scrollbar-gutter: stable; }
+
 body {
   margin: 0;
+  /* A column the height of the window, with main taking up the slack, which keeps the footer on
+     the bottom edge instead of floating under short pages. */
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--bg);
 }
+
+/* ---------------------------------------------------------------- chrome */
 
 header {
+  padding: 1.1rem var(--gutter);
+  border-bottom: 1px solid var(--line);
+}
+.bar {
   display: flex;
   align-items: baseline;
-  gap: 1.5rem;
-  padding: 1.1rem clamp(1rem, 4vw, 3rem);
-  border-bottom: 1px solid var(--line);
+  justify-content: center;
+  gap: 2rem;
   flex-wrap: wrap;
+  max-width: var(--column);
+  margin-inline: auto;
 }
-header h1 { font-size: 1.15rem; margin: 0; letter-spacing: 0.01em; }
+header h1 { font-size: 1.05rem; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
 header h1 a { color: inherit; text-decoration: none; }
-nav { display: flex; gap: 1rem; }
-nav a { color: var(--muted); text-decoration: none; font-size: 0.94rem; padding-bottom: 2px; }
+nav { display: flex; gap: 1.4rem; }
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding-bottom: 3px;
+}
 nav a:hover { color: var(--ink); }
-nav a[aria-current="page"] { color: var(--ink); border-bottom: 2px solid var(--accent); }
+nav a[aria-current="page"] { color: var(--ink); border-bottom: 1px solid var(--accent); }
 
-main { padding: clamp(1.2rem, 4vw, 2.5rem) clamp(1rem, 4vw, 3rem); max-width: 1080px; }
-h2 { font-size: 1.4rem; margin: 0 0 1rem; font-weight: 600; }
-.note { color: var(--muted); font-size: 0.88rem; }
+main {
+  flex: 1 0 auto;
+  width: 100%;
+  max-width: var(--page);
+  margin-inline: auto;
+  padding: clamp(1.2rem, 4vw, 2.5rem) var(--gutter);
+}
+h2 { font-size: 1.5rem; margin: 0 0 1.2rem; font-weight: 600; letter-spacing: -0.01em; }
+.note { color: var(--muted); font-size: 0.86rem; }
 
-/* setup form */
-form#setup { display: grid; gap: 1rem; max-width: 22rem; }
-label { display: grid; gap: 0.35rem; font-size: 0.9rem; color: var(--muted); }
+footer {
+  padding: 1.6rem var(--gutter) 2rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
+footer p { margin: 0 auto; max-width: var(--column); }
+footer code { font-family: var(--mono); font-size: 0.92em; color: var(--ink); }
+
+/* ---------------------------------------------------------------- setup */
+
+#view-setup { max-width: 22rem; margin-inline: auto; }
+form#setup { display: grid; gap: 1.1rem; }
+label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 input, select, button {
   font: inherit;
-  padding: 0.6rem 0.7rem;
+  padding: 0.62rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--paper);
+  background: var(--raised);
   color: var(--ink);
+  text-transform: none;
+  letter-spacing: normal;
 }
 input:focus-visible, select:focus-visible, button:focus-visible {
   outline: 2px solid var(--accent);
@@ -73,98 +126,515 @@ button {
   cursor: pointer;
   border-color: transparent;
   background: var(--accent);
-  color: var(--paper);
+  color: #14150f;
   font-weight: 600;
 }
-button:hover { filter: brightness(1.07); }
-#resign { background: transparent; color: var(--danger); border-color: var(--line); }
+button:hover { filter: brightness(1.08); }
+#resign { background: transparent; color: var(--danger); border-color: var(--line); font-weight: 500; }
+#resign:hover { border-color: var(--danger); filter: none; }
 
-/* game layout */
-.game { display: flex; gap: clamp(1rem, 3vw, 2rem); flex-wrap: wrap; align-items: flex-start; }
+/* ---------------------------------------------------------------- board */
+
+/* Board on the left, her and the move list stacked on the right. Grid areas rather than source
+   order, so the same markup can put her above the board on a narrow screen. */
+.game {
+  display: grid;
+  gap: clamp(0.8rem, 2vw, 1.6rem) clamp(1rem, 3vw, 2.4rem);
+  grid-template-columns: auto minmax(13rem, 18rem);
+  grid-template-areas:
+    "board bot"
+    "board panel";
+  align-content: start;
+  justify-content: center;
+}
+.game > .bot { grid-area: bot; }
+.game > .board-side { grid-area: board; }
+.game > .panel { grid-area: panel; }
 .board-side { display: grid; gap: 0.5rem; }
 
 .board {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  width: min(78vw, 30rem);
-  aspect-ratio: 1;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: var(--shadow);
-  user-select: none;
-  touch-action: manipulation;
-}
-.sq {
   position: relative;
   display: grid;
-  place-items: center;
-  font-size: min(8.6vw, 3.3rem);
-  line-height: 1;
-  cursor: pointer;
+  grid-template-columns: repeat(8, 1fr);
+  /* vmin so a short window shrinks the board rather than pushing it off the screen. */
+  width: min(80vmin, 34rem);
+  aspect-ratio: 1;
+  border-radius: 3px;
+  box-shadow: var(--shadow);
+  user-select: none;
+  /* The board owns every gesture on it: without this a drag scrolls the page on a touchscreen. */
+  touch-action: none;
+}
+
+.sq {
+  position: relative;
   border: 0;
+  border-radius: 0;
   padding: 0;
-  background: var(--light);
-  color: #000;
+  cursor: pointer;
+  background: var(--sq-light);
 }
-.sq.d { background: var(--dark); }
-.sq[data-piece^="b"] { color: #17161a; text-shadow: 0 0 1px rgba(255,255,255,0.35); }
-.sq[data-piece^="w"] { color: #fffdf8; text-shadow: 0 1px 2px rgba(0,0,0,0.45); }
-.sq.from { background: var(--accent-soft); }
-.sq.last::after {
-  content: ""; position: absolute; inset: 0;
-  box-shadow: inset 0 0 0 3px var(--accent-soft);
+.sq.d { background: var(--sq-dark); }
+.sq:focus-visible { outline: 2px solid #fff; outline-offset: -2px; z-index: 3; }
+/* The board has no overflow clip, so a dragged piece can leave it. Round the corners instead. */
+.sq:nth-child(1) { border-top-left-radius: 3px; }
+.sq:nth-child(8) { border-top-right-radius: 3px; }
+.sq:nth-child(57) { border-bottom-left-radius: 3px; }
+.sq:nth-child(64) { border-bottom-right-radius: 3px; }
+
+/* Pieces. cburnett, as vendored in vendor/piece/. Each square publishes its image as a custom
+   property so both the piece in place and the one under the cursor can read it. */
+.sq[data-piece="wk"], .ghost[data-piece="wk"] { --piece: url("/vendor/piece/wK.svg"); }
+.sq[data-piece="wq"], .ghost[data-piece="wq"] { --piece: url("/vendor/piece/wQ.svg"); }
+.sq[data-piece="wr"], .ghost[data-piece="wr"] { --piece: url("/vendor/piece/wR.svg"); }
+.sq[data-piece="wb"], .ghost[data-piece="wb"] { --piece: url("/vendor/piece/wB.svg"); }
+.sq[data-piece="wn"], .ghost[data-piece="wn"] { --piece: url("/vendor/piece/wN.svg"); }
+.sq[data-piece="wp"], .ghost[data-piece="wp"] { --piece: url("/vendor/piece/wP.svg"); }
+.sq[data-piece="bk"], .ghost[data-piece="bk"] { --piece: url("/vendor/piece/bK.svg"); }
+.sq[data-piece="bq"], .ghost[data-piece="bq"] { --piece: url("/vendor/piece/bQ.svg"); }
+.sq[data-piece="br"], .ghost[data-piece="br"] { --piece: url("/vendor/piece/bR.svg"); }
+.sq[data-piece="bb"], .ghost[data-piece="bb"] { --piece: url("/vendor/piece/bB.svg"); }
+.sq[data-piece="bn"], .ghost[data-piece="bn"] { --piece: url("/vendor/piece/bN.svg"); }
+.sq[data-piece="bp"], .ghost[data-piece="bp"] { --piece: url("/vendor/piece/bP.svg"); }
+
+.pc {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--piece) center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
 }
-.sq.to::before {
-  content: ""; width: 28%; aspect-ratio: 1; border-radius: 50%;
-  background: var(--accent-soft);
+.sq[data-piece]:not([data-piece=""]) { cursor: grab; }
+.board[data-dragging="1"], .board[data-dragging="1"] .sq { cursor: grabbing; }
+/* The square a drag started from, while the piece itself rides the cursor. */
+.sq.lifted .pc { opacity: 0.22; }
+
+/* Rank and file labels, drawn inside the edge squares. */
+.co {
+  position: absolute;
+  z-index: 2;
+  font: 600 0.64rem/1 var(--mono);
+  pointer-events: none;
+  color: rgba(20, 21, 15, 0.45);
 }
-.sq.to[data-piece]:not([data-piece=""])::before {
-  width: 88%; border-radius: 8px; background: transparent;
-  box-shadow: inset 0 0 0 4px var(--accent-soft);
+.sq.d .co { color: rgba(236, 239, 217, 0.8); }
+.co.file { bottom: 3px; right: 4px; }
+.co.rank { top: 3px; left: 4px; }
+
+/* Highlights, in the order they should win: last move, then selection, then check. */
+.sq.last { background: #d8dc7d; }
+.sq.d.last { background: #b2b04f; }
+.sq.from { background: #bdd68e; }
+.sq.d.from { background: #8fb066; }
+/* A premove, waiting on the engine's reply. */
+.sq.pre { background: #a9bdd9; }
+.sq.d.pre { background: #7d96b7; }
+.sq.check { background: radial-gradient(circle, #e8705c 14%, #cf4a35 58%, var(--sq-light) 92%); }
+.sq.d.check { background: radial-gradient(circle, #e8705c 14%, #c2402b 58%, var(--sq-dark) 92%); }
+
+/* Legal destinations: a dot on an empty square, a ring around something capturable. */
+.sq.to::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 1;
+  width: 28%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(20, 21, 15, 0.22);
 }
-.sq.check { background: #d9534f55; }
+.sq.to[data-piece]:not([data-piece=""])::after {
+  left: 0;
+  top: 0;
+  translate: none;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 5px rgba(20, 21, 15, 0.2);
+}
+/* The square the cursor is over mid-drag. */
+.sq.over { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.7); z-index: 3; }
+
+/* The piece riding the cursor. Fixed to the viewport, so it can leave the board. */
+.ghost {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--piece) center / contain no-repeat;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  will-change: transform;
+}
+
+/* ---------------------------------------------------------------- clocks */
 
 .clock {
-  display: flex; justify-content: space-between; align-items: baseline;
-  padding: 0.4rem 0.6rem; border: 1px solid var(--line); border-radius: 8px;
-  font-variant-numeric: tabular-nums;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
 }
-.clock .who { color: var(--muted); font-size: 0.85rem; }
-.clock .time { font-size: 1.25rem; font-weight: 600; }
-.clock.active { border-color: var(--accent); background: var(--accent-soft); }
+.clock .who {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+.clock .who::before {
+  content: "";
+  width: 0.62rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid #6f745f;
+}
+.clock[data-side="white"] .who::before { background: #f4f4ec; }
+.clock[data-side="black"] .who::before { background: #26251f; }
+.clock .time { font: 400 1.7rem/1 var(--mono); letter-spacing: -0.02em; }
+.clock .frac { font-size: 0.62em; color: var(--muted); }
+.clock.active { border-color: var(--line); background: var(--raised); }
+.clock.active .who { color: var(--ink); }
 .clock.low .time { color: var(--danger); }
+.clock.low .frac { color: rgba(221, 107, 90, 0.62); }
 
-.panel { flex: 1 1 15rem; min-width: 13rem; display: grid; gap: 0.8rem; }
+/* ---------------------------------------------------------------- panel */
+
+.panel { display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .status { margin: 0; font-weight: 600; min-height: 1.6em; }
-.moves {
-  margin: 0; padding: 0 0 0 2.2rem; max-height: 17rem; overflow: auto;
-  font-variant-numeric: tabular-nums; font-size: 0.92rem; color: var(--muted);
-}
-.moves li { padding: 0.05rem 0; }
-.moves li span { color: var(--ink); display: inline-block; min-width: 4.2rem; }
-.actions { display: flex; gap: 0.5rem; }
 
-/* cards */
-.cards { display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.moves {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 20rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--raised);
+  font: 0.88rem/1.9 var(--mono);
+}
+.moves:empty { display: none; }
+.moves li {
+  display: grid;
+  grid-template-columns: 2.6rem 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0 0.6rem;
+}
+.moves li:nth-child(even) { background: rgba(255, 255, 255, 0.022); }
+.moves li::before {
+  content: counter(list-item) ".";
+  color: var(--muted);
+  text-align: right;
+}
+.moves li span { color: var(--ink); }
+#moves li:last-child { background: var(--accent-soft); }
+
+.actions { display: flex; gap: 0.6rem; }
+#engine-note { font-family: var(--mono); font-size: 0.78rem; }
+#engine-note a { color: var(--accent); }
+
+/* ---------------------------------------------------------------- cards */
+
+.cards { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
 .card {
-  display: block; padding: 0.85rem 1rem; border: 1px solid var(--line);
-  border-radius: 10px; text-decoration: none; color: inherit; background: var(--paper);
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  background: var(--raised);
 }
 .card:hover { border-color: var(--accent); }
-.card h3 { margin: 0 0 0.3rem; font-size: 1rem; }
-.card p { margin: 0; color: var(--muted); font-size: 0.86rem; }
-.tag { font-weight: 600; }
+.card h3 { margin: 0 0 0.35rem; font-size: 1rem; font-weight: 600; }
+.card p { margin: 0; color: var(--muted); font-size: 0.82rem; font-family: var(--mono); }
+.tag {
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
 .tag.won { color: var(--accent); }
 .tag.lost { color: var(--danger); }
 .tag.drawn { color: var(--muted); }
 .pgn {
-  margin: 0.5rem 0 0; padding: 0.5rem 0.6rem; background: var(--light);
-  border-radius: 6px; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #1b1a17; white-space: pre-wrap; word-break: break-word; max-height: 8rem; overflow: auto;
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: 12px/1.6 var(--mono);
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 8rem;
+  overflow: auto;
 }
 
-footer {
-  padding: 1.5rem clamp(1rem, 4vw, 3rem) 2.5rem;
-  border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; max-width: 1080px;
+/* ---------------------------------------------------------------- the bot */
+
+.bot { display: flex; align-items: flex-start; gap: 0.7rem; }
+.bot-face {
+  width: 4.4rem;
+  height: 4.4rem;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  animation: bob 4.5s ease-in-out infinite;
 }
-footer code { font-size: 0.95em; }
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-3px) rotate(1deg); }
+}
+
+/* The speech bubble, with a tail pointing back at her. */
+.bubble {
+  position: relative;
+  flex: 1 1 auto;
+  align-self: center;
+  min-height: 2.4rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--raised);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.bubble::before,
+.bubble::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  right: 100%;
+  border: 7px solid transparent;
+}
+.bubble::before { border-right-color: var(--line); }
+.bubble::after { margin-right: -1.5px; border-right-color: var(--raised); }
+/* A caret that blinks only while there is more to type. */
+.bubble.typing #bot-text::after {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: var(--accent);
+  animation: caret 0.7s steps(1) infinite;
+}
+@keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.bubble[data-mood="sad"] { border-color: rgba(221, 107, 90, 0.5); }
+.bubble[data-mood="plead"] { border-color: rgba(143, 199, 232, 0.5); }
+
+/* ---------------------------------------------------------------- the plea */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(10, 11, 8, 0.72);
+  animation: fade 0.16s ease-out;
+}
+.modal[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-card {
+  position: relative;
+  width: min(92vw, 20rem);
+  padding: 1.6rem 1.4rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--raised);
+  box-shadow: var(--shadow);
+  text-align: center;
+  animation: pop 0.22s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+@keyframes pop { from { transform: scale(0.88); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.modal-face {
+  width: 7.5rem;
+  height: 7.5rem;
+  border-radius: 50%;
+  animation: plead 1.6s ease-in-out infinite;
+}
+@keyframes plead {
+  0%, 100% { transform: rotate(-4deg) translateY(0); }
+  50% { transform: rotate(4deg) translateY(-2px); }
+}
+
+.modal-text {
+  margin: 0.7rem 0 1.1rem;
+  font-size: 1.28rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.modal-yes { width: 100%; padding: 0.65rem; font-size: 1rem; }
+.modal-note { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.74rem; }
+
+.modal-close {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+.modal-close:hover { background: rgba(255, 255, 255, 0.07); color: var(--ink); filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bot-face, .modal-face, .modal, .modal-card { animation: none; }
+  .bubble.typing #bot-text::after { animation: none; }
+}
+
+/* ---------------------------------------------------------------- narrow screens */
+
+/* One column, with her at the top where there is room to read her, then the board, then the
+   moves. The board takes the width it can get rather than being held to 80vmin. */
+@media (max-width: 56rem) {
+  .game {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "bot"
+      "board"
+      "panel";
+    justify-items: center;
+  }
+  .game > .bot { width: 100%; max-width: 34rem; }
+  .game > .panel { width: 100%; max-width: 34rem; }
+  .board { width: min(94vw, 34rem); }
+  .moves { max-height: 12rem; }
+}
+
+@media (max-width: 30rem) {
+  :root { --gutter: 0.75rem; }
+  .bar { gap: 0.9rem; }
+  .clock .time { font-size: 1.4rem; }
+  .bot-face { width: 3.5rem; height: 3.5rem; }
+  .co { font-size: 0.55rem; }
+  /* Fingers are not mice: the tap targets and the actions row need the room. */
+  .actions { flex-wrap: wrap; }
+  .actions button { flex: 1 1 8rem; }
+}
+
+/* ---------------------------------------------------------------- the homepage */
+
+#view-setup { max-width: 34rem; }
+/* Centred as a group, so the middle of the avatar and heading lands on the middle of the page,
+   in line with the header and the footer. */
+.intro {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+.intro-face {
+  width: 4.8rem;
+  height: 4.8rem;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.intro h2 { margin: 0; }
+.tagline { margin: 0.25rem 0 0; color: var(--accent); font-size: 0.9rem; }
+.lede { margin: 0 0 0.9rem; color: var(--muted); font-size: 0.92rem; line-height: 1.7; }
+.lede code { font-family: var(--mono); font-size: 0.9em; color: var(--ink); }
+#view-setup h3 {
+  margin: 1.8rem 0 1rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+/* The form, its label and the storage note share one centred column, so the label still sits
+   above the left edge of the fields rather than each piece being centred on its own. */
+.setup-column { max-width: 22rem; margin-inline: auto; }
+form#setup { max-width: none; }
+
+@media (max-width: 30rem) {
+  .intro { gap: 0.8rem; }
+  .intro-face { width: 3.6rem; height: 3.6rem; }
+  .intro h2 { font-size: 1.25rem; }
+}
+
+/* ---------------------------------------------------------------- replay */
+
+.game.replay { grid-template-areas: "board panel"; }
+@media (max-width: 56rem) {
+  .game.replay {
+    grid-template-areas:
+      "board"
+      "panel";
+  }
+}
+
+/* A board that is only being watched. */
+.board.static .sq { cursor: default; }
+
+/* Clickable notation. The global button styling has to be undone here. */
+.moves .ply {
+  padding: 0 0.25rem;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+.moves .ply:empty { cursor: default; }
+.moves .ply:hover:not(:empty) { background: rgba(255, 255, 255, 0.08); filter: none; }
+.moves .ply.on { background: var(--accent); color: #14150f; font-weight: 600; }
+
+.actions.steps { display: flex; gap: 0.35rem; }
+.actions.steps button {
+  flex: 1 1 auto;
+  padding: 0.5rem 0.35rem;
+  background: var(--raised);
+  border-color: var(--line);
+  color: var(--ink);
+  font-family: var(--mono);
+}
+.actions.steps button:hover { background: #24271c; filter: none; }
+#replay-play { flex: 2 1 auto; font-family: inherit; }
+#replay-back { background: transparent; border-color: var(--line); color: var(--muted); }
+#replay-back:hover { color: var(--ink); filter: none; }
+
+/* The PGN is tucked away now that a game can just be watched. */
+.card details { margin-top: 0.6rem; }
+.card summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.card-replay {
+  float: right;
+  margin: 0 0 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+}
+.card-replay:disabled { opacity: 0.4; cursor: not-allowed; }

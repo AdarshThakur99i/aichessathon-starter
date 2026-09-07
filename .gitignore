@@ -6,5 +6,6 @@ submission.zip
 *.pgn
 
 # web interface
+games/
 .vercel/
 node_modules/
