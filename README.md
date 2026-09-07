@@ -1,5 +1,15 @@
 # AI Chessathon starter
 
+> **This fork is `drunkenmaster`.** The agent, its measured rules-compliance, the browser
+> interface under `public/` and `api/`, and the development tooling are all documented in
+> **[DEVELOPMENT.md](DEVELOPMENT.md)**.
+>
+> `baselines/stockfish/agent.py` is a UCI bridge used **only** to grade our own moves during
+> development. It does not ship: `harness/package.py` collects root-level Python files plus a
+> `weights` directory, so the submission zip contains `agent.py` and nothing else. The rules
+> prohibit shipping a third-party engine and permit analysing your own games with one.
+
+
 Fork this to build an agent for [AI Chessathon](https://aichessathon.com). It gives you a working
 submission, baselines to beat, and a local harness that speaks the same protocol and enforces the
 same clock as the platform, so you can see whether a change actually helped before you upload it.

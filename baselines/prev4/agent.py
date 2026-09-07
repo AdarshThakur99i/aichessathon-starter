@@ -40,9 +40,9 @@ CENTER_SQUARES = {
 # 2. material
 # 3. king safety
 # 4. center control
-MOBILITY_WEIGHT = 2.0
-MATERIAL_WEIGHT = 4.0
-KING_SAFETY_WEIGHT = 2.5
+MOBILITY_WEIGHT = 3.0
+MATERIAL_WEIGHT = 2.0
+KING_SAFETY_WEIGHT = 1.5
 CENTER_WEIGHT = 1.0
 ATTACK_WEIGHT = 0.5
 PASSED_PAWN_WEIGHT = 18.0
@@ -50,14 +50,6 @@ HANGING_PIECE_WEIGHT = 35.0
 PAWN_STRUCTURE_WEIGHT = 12.0
 THREAT_WEIGHT = 20.0
 SPACE_WEIGHT = 3.0
-OPENING_CENTER_BONUS = 8_000
-OPENING_PAWN_CENTER_WEIGHT = 35.0
-PAWN_CENTER_CONTROL_WEIGHT = 12.0
-CASTLING_RIGHTS_WEIGHT = 10.0
-OPENING_QUEEN_PENALTY = 75.0
-OPENING_OVEREXTENSION_PENALTY = 3_500
-OPEN_FILE_KING_PENALTY = 35.0
-SEMI_OPEN_KING_PENALTY = 15.0
 
 # Same order as _features, and as the names tools/tune_weights.py prints.
 FEATURE_WEIGHTS = (
@@ -80,44 +72,13 @@ FEATURE_WEIGHTS = (
 #
 # The gate is deliberately narrow. This term is exactly zero whenever the losing side still has a
 # pawn, so it cannot disturb any normal position, only the ones the engine currently throws away.
-# Loud on purpose. These only speak when one side is a rook up against a bare king, so they
-# cannot disturb ordinary play, and they have to outshout the ordinary tables to be any use: the
-# rook table pays 48 units for stepping to the seventh rank while bringing the king a square
-# closer used to pay 8, so the engine took the rook move, ran out of things to gain, and shuffled
-# to a draw from won king-and-rook positions. Walking the king in is the whole technique.
-MATING_DRIVE_EDGE = 60.0
-MATING_DRIVE_CLOSE = 50.0
-# Squares the losing king still has. Taking them away is the other half of the technique, and
-# nothing else in the evaluator notices: the mobility feature prices five lost king moves at ten
-# units, against a pawn being four hundred.
-MATING_DRIVE_CONFINE = 40.0
-# Only speaks when the losing side is down to a bare king, which is the one case where herding
-# to the edge is the entire plan. With a piece still on, as in queen against rook, the quiet
-# values below apply instead, because a loud herding term would otherwise swamp real endgame
-# considerations: rook and pawn against rook has no pawns on the weak side either, and being
-# pulled two pawns' worth towards the enemy king there would be actively wrong.
-MATING_DRIVE_EDGE_QUIET = 12.0
-MATING_DRIVE_CLOSE_QUIET = 8.0
+MATING_DRIVE_EDGE = 12.0
+MATING_DRIVE_CLOSE = 8.0
 MATING_DRIVE_MIN_EDGE = 400
 
 MATE_SCORE = 1_000_000.0
 MATE_THRESHOLD = MATE_SCORE - 1_000.0
 # One pawn is MATERIAL_WEIGHT * 100 = 200 evaluation units. The margins below are in those units.
-# The centre a pawn can actually be fought over, wider than the four squares the opening term
-# counts, because c4/f4 and c5/f5 are where the levers land.
-INNER_CENTER_SQUARES = (chess.D4, chess.E4, chess.D5, chess.E5)
-OUTER_CENTER_SQUARES = (chess.C4, chess.F4, chess.C5, chess.F5)
-# What a pawn on the c or f file is worth as a target next to one on the d or e file. The whole
-# point of a lever is that the trade is uneven: giving up a c pawn to remove the pawn on d4 buys
-# a share of the centre, so hitting the inner square has to pay more than being hit back on the
-# outer one. Score them equally and the two cancel, because diagonally adjacent pawns always
-# attack each other, and the term is silently worth nothing in every position.
-OUTER_CENTER_SHARE = 0.4
-# Paid for hitting an enemy pawn that holds the centre. Occupying the centre was already worth 35
-# a square, but nothing was worth anything for taking it away, and only one side can occupy it.
-# White moves first and gets there; black could never score a central move at all, so it developed
-# behind the enemy centre instead of striking at it, which is how a knight ends up on a6.
-CENTRAL_CHALLENGE_WEIGHT = 30.0
 PAWN_UNITS = MATERIAL_WEIGHT * PIECE_VALUE[chess.PAWN]
 DELTA_MARGIN = 2.0 * PAWN_UNITS
 # A draw is worth slightly less than nothing to the side that is thinking, so the search prefers a
@@ -126,7 +87,7 @@ CONTEMPT = 0.1 * PAWN_UNITS
 # Once the opponent's king has committed to a wing, lean towards a pawn storm down that wing: h4,
 # g4, a4, b4 and the like. The bonus only tips the choice between root moves the search already
 # rates within this much of each other, so a real refutation still wins. Set to 0.0 to switch off.
-FLANK_STORM_BONUS = 0.0
+FLANK_STORM_BONUS = 0.2 * PAWN_UNITS
 # g and h against a king that went short, a and b against a king that went long.
 KINGSIDE_STORM_FILES = frozenset({chess.square_file(chess.G1), chess.square_file(chess.H1)})
 QUEENSIDE_STORM_FILES = frozenset({chess.square_file(chess.A1), chess.square_file(chess.B1)})
@@ -146,13 +107,6 @@ LONG_WING_FILE = chess.square_file(chess.C1)
 # engine shuffling into a repetition instead of finding the mate.
 DECISIVE_ADVANTAGE = 4.0 * PAWN_UNITS
 DECISIVE_MIN_DEPTH = 6
-# The early exit above is for winning middlegames, where a sound move is enough and the clock is
-# better spent later. It must not fire while a win is still being converted. A rook up against a
-# bare king scores far past the threshold, so the search used to stop at six ply and spend a fifth
-# of a second of a three second budget, and six ply is not enough to drive a king to the edge from
-# an arbitrary square. The engine then shuffled until a repetition took the win away, which is
-# exactly what a won rook ending kept turning into.
-DECISIVE_MIN_PIECES = 8
 
 # Late move reductions. Good move ordering means a move late in the list is rarely the best one,
 # so it is searched a ply or two shallower first and only re-searched at full depth if it beats
@@ -167,24 +121,19 @@ MAX_PLY = 64
 # Iterative deepening stops when the clock says so, so this is only a ceiling. It is set above what
 # a middlegame can afford because an endgame reaches depth 7 in well under a second, and converting
 # a won endgame is exactly where the extra plies pay.
-# The clock, not this number, is what normally ends the search: a middlegame runs out of
-# time around six ply. It only binds in endgames, where few pieces make each ply cheap,
-# and there it was binding hard: king and rook against a bare king stopped at eight ply
-# having spent a quarter of its budget, and eight ply does not reach a mate from an
-# arbitrary square. Bounded well under MAX_PLY so the killer tables stay in range.
-MAX_SEARCH_DEPTH = int(os.environ.get("CHESSATHON_MAX_DEPTH", "32"))
+MAX_SEARCH_DEPTH = int(os.environ.get("CHESSATHON_MAX_DEPTH", "8"))
 DEBUG = os.environ.get("CHESSATHON_DEBUG") == "1"
 
 # Time control, from https://aichessathon.com/docs/rules.md. This is the increment the rules
 # quote; _observe_increment measures the real one, because a control that pays less than this
 # would otherwise walk the clock down to a flag.
 INCREMENT_S = 0.5
-INCREMENT_SHARE = 0.8
-EXPECTED_GAME_MOVES = 36
+INCREMENT_SHARE = 0.6
+EXPECTED_GAME_MOVES = 44
 MIN_MOVES_TO_GO = 16
 # Never bet more than this share of the remaining clock on one move, and always hand back enough
 # for the reply to travel and for one last evaluation to finish.
-MAX_CLOCK_SHARE = 0.5
+MAX_CLOCK_SHARE = 0.35
 CLOCK_RESERVE_S = 0.15
 # A new iteration costs several times the last one, so do not start one past this much of the plan.
 NEXT_ITERATION_SHARE = 0.45
@@ -206,8 +155,6 @@ KILLER_BONUS = 1 << 20
 BAD_CAPTURE_BONUS = 1 << 16
 
 _KING_ZONE = [chess.BB_KING_ATTACKS[square] | chess.BB_SQUARES[square] for square in chess.SQUARES]
-_INNER_CENTER_MASK = sum(chess.BB_SQUARES[square] for square in INNER_CENTER_SQUARES)
-_OUTER_CENTER_MASK = sum(chess.BB_SQUARES[square] for square in OUTER_CENTER_SQUARES)
 _CENTER_MASK = sum(chess.BB_SQUARES[square] for square in CENTER_SQUARES)
 _WHITE_HALF = chess.BB_RANK_5 | chess.BB_RANK_6 | chess.BB_RANK_7 | chess.BB_RANK_8
 _BLACK_HALF = chess.BB_RANK_1 | chess.BB_RANK_2 | chess.BB_RANK_3 | chess.BB_RANK_4
@@ -228,9 +175,6 @@ def _passed_pawn_spans() -> list[list[int]]:
 
 
 _PASSED_SPAN = _passed_pawn_spans()
-# One bit on every rank of the a file; multiplying an eight-bit file mask by this copies it up
-# the whole board.
-_FILE_FILL = 0x0101010101010101
 _first = operator.itemgetter(0)
 _second = operator.itemgetter(1)
 
@@ -266,42 +210,20 @@ def _attack_summary(board: chess.Board, color: chess.Color) -> tuple[int, int]:
 
     One pass over the side's pieces feeds three features that the previous evaluator each
     recomputed from scratch: mobility, the attacked-square count, and the hanging-piece test.
-
-    Knights and the king read their attacks from the tables directly, and the pawns are done as a
-    set with two shifts, because attacks_mask first has to discover what is standing on the square
-    and this runs on every piece at every leaf. Only the sliders go through attacks_mask, since
-    only their reach depends on what else is on the board.
     """
-    popcount = chess.popcount
-    scan = chess.scan_forward
     own = board.occupied_co[color]
-    not_own = ~own
     pawns = own & board.pawns
     attacked = 0
     mobility = 0
-    table = chess.BB_KNIGHT_ATTACKS
-    for square in scan(own & board.knights):
-        attacks = table[square]
+    for square in chess.scan_forward(own & ~board.pawns):
+        attacks = board.attacks_mask(square)
         attacked |= attacks
-        mobility += popcount(attacks & not_own)
-    king = own & board.kings
-    if king:
-        attacks = chess.BB_KING_ATTACKS[chess.msb(king)]
-        attacked |= attacks
-        mobility += popcount(attacks & not_own)
-    attacks_mask = board.attacks_mask
-    for square in scan(own & (board.bishops | board.rooks | board.queens)):
-        attacks = attacks_mask(square)
-        attacked |= attacks
-        mobility += popcount(attacks & not_own)
-    if color == chess.WHITE:
-        attacked |= ((pawns & ~chess.BB_FILE_A) << 7) | ((pawns & ~chess.BB_FILE_H) << 9)
-        pushes = pawns << 8
-    else:
-        attacked |= ((pawns & ~chess.BB_FILE_A) >> 9) | ((pawns & ~chess.BB_FILE_H) >> 7)
-        pushes = pawns >> 8
-    mobility += popcount(pushes & ~board.occupied & chess.BB_ALL)
-    return attacked & chess.BB_ALL, mobility
+        mobility += chess.popcount(attacks & ~own)
+    for square in chess.scan_forward(pawns):
+        attacked |= board.attacks_mask(square)
+    pushes = (pawns << 8) if color == chess.WHITE else (pawns >> 8)
+    mobility += chess.popcount(pushes & ~board.occupied & chess.BB_ALL)
+    return attacked, mobility
 
 
 def _mobility_for_color(board: chess.Board, color: chess.Color) -> int:
@@ -343,20 +265,6 @@ def _king_safety_score(board: chess.Board) -> float:
         own = board.occupied_co[color]
         shield = 0.75 * chess.popcount(own & zone)
         shield += 0.25 * chess.popcount(own & board.pawns & zone)
-        king_file = chess.square_file(king)
-        own_pawns = board.pawns & board.occupied_co[color]
-        enemy_pawns = board.pawns & board.occupied_co[not color]
-        line_danger = 0.0
-        for file in range(max(0, king_file - 1), min(8, king_file + 2)):
-            file_mask = chess.BB_FILES[file]
-            if own_pawns & file_mask:
-                continue
-            line_danger += (
-                OPEN_FILE_KING_PENALTY
-                if not enemy_pawns & file_mask
-                else SEMI_OPEN_KING_PENALTY
-            )
-        shield -= line_danger
         score += shield if color == chess.WHITE else -shield
     return score
 
@@ -373,29 +281,28 @@ def _hanging_pieces(board: chess.Board, color: chess.Color) -> int:
 
 
 def _pawn_structure(board: chess.Board, color: chess.Color) -> tuple[int, int]:
-    """Doubled and isolated pawn counts for one side.
-
-    The pawn set is folded onto one rank so that each bit says whether a file holds a pawn. Every
-    pawn beyond the first on a file is doubled, so that is pawns minus occupied files; a file is
-    isolated when neither neighbour bit is set, and multiplying that file mask back up the board
-    picks out the pawns standing on those files.
-    """
     pawns = board.pawns & board.occupied_co[color]
-    if not pawns:
-        return 0, 0
-    fill = pawns | (pawns >> 8)
-    fill |= fill >> 16
-    fill |= fill >> 32
-    files = fill & 0xFF
-    doubled = chess.popcount(pawns) - chess.popcount(files)
-    neighbours = ((files << 1) | (files >> 1)) & 0xFF
-    isolated = chess.popcount(pawns & ((files & ~neighbours) * _FILE_FILL))
+    counts = [chess.popcount(pawns & chess.BB_FILES[file]) for file in range(8)]
+    doubled = sum(count - 1 for count in counts if count > 1)
+    isolated = 0
+    for file, count in enumerate(counts):
+        if not count:
+            continue
+        left = counts[file - 1] if file > 0 else 0
+        right = counts[file + 1] if file < 7 else 0
+        if not left and not right:
+            isolated += count
     return doubled, isolated
 
 
 def _passed_pawns(board: chess.Board, color: chess.Color) -> int:
-    white, black, _ = _passer_terms(board)
-    return white if color == chess.WHITE else black
+    enemy_pawns = board.pawns & board.occupied_co[not color]
+    spans = _PASSED_SPAN[color]
+    count = 0
+    for square in chess.scan_forward(board.pawns & board.occupied_co[color]):
+        if not enemy_pawns & spans[square]:
+            count += 1
+    return count
 
 
 def _space_score(board: chess.Board) -> float:
@@ -432,285 +339,7 @@ def _features(board: chess.Board) -> tuple[float, ...]:
     )
 
 
-# Piece-square tables, interpolated between a middlegame and an endgame set by how much material
-# is left. These are the classical published tables rather than anything fitted: the evaluator had
-# no idea that a knight belongs in the centre or that a pawn on the seventh is nearly a queen.
-#
-# The king pair is the point of the exercise. In the middlegame it wants to stay tucked behind its
-# own pawns; in the endgame it has to march to the centre and escort pawns. Without that swing the
-# engine has no notion of progress in a pawn endgame, which is why it drew fourteen of twenty
-# games by repetition against an opponent it never lost to.
-# How much a passed pawn is worth, by how far it has come, in pawns. The existing counting
-# feature only says whether a passer exists; this says what it is worth, which is nearly
-# everything. A passer on the seventh is close to a piece and one on the third is close to
-# nothing, and the mobility term cannot see the difference: a pawn on b7 scores six units of
-# mobility while being almost a queen. That is the test a new term has to pass here, because
-# bonuses for things mobility already pays for measured -70 Elo.
-PASSED_RANK_BONUS = (0.0, 0.0, 0.05, 0.15, 0.35, 0.65, 1.10, 0.0)
-# A passer with one of our own pawns guarding it cannot be driven off by a piece.
-PROTECTED_PASSER_BONUS = 0.20
-# A passer with anything sitting on the square in front of it is going nowhere for now.
-BLOCKADED_PASSER_SCALE = 0.5
-
-PST_WEIGHT = MATERIAL_WEIGHT
-PHASE_TOTAL = 24
-_PHASE_UNITS = {chess.KNIGHT: 1, chess.BISHOP: 1, chess.ROOK: 2, chess.QUEEN: 4}
-
-# Written a1 first, so index 0 is a1 and index 63 is h8, matching chess.SQUARES for white.
-_PST_SOURCE: dict[int, tuple[list[int], list[int]]] = {
-    chess.PAWN: (
-        [
-            0, 0, 0, 0, 0, 0, 0, 0,
-            5, 10, 0, -20, -20, 0, 10, 5,
-            5, -5, -10, 0, 0, -10, -5, 5,
-            0, 0, 14, 20, 20, 14, 0, 0,
-            5, 5, 10, 25, 25, 10, 5, 5,
-            10, 10, 20, 30, 30, 20, 10, 10,
-            50, 50, 50, 50, 50, 50, 50, 50,
-            0, 0, 0, 0, 0, 0, 0, 0,
-        ],
-        [
-            0, 0, 0, 0, 0, 0, 0, 0,
-            -5, -5, -5, -5, -5, -5, -5, -5,
-            5, 5, 5, 5, 5, 5, 5, 5,
-            20, 20, 20, 20, 20, 20, 20, 20,
-            45, 45, 45, 45, 45, 45, 45, 45,
-            80, 80, 80, 80, 80, 80, 80, 80,
-            120, 120, 120, 120, 120, 120, 120, 120,
-            0, 0, 0, 0, 0, 0, 0, 0,
-        ],
-    ),
-    chess.KNIGHT: (
-        [
-            -50, -40, -30, -30, -30, -30, -40, -50,
-            -40, -20, 0, 5, 5, 0, -20, -40,
-            -30, 5, 10, 15, 15, 10, 5, -30,
-            -30, 0, 15, 20, 20, 15, 0, -30,
-            -30, 5, 15, 20, 20, 15, 5, -30,
-            -30, 0, 10, 15, 15, 10, 0, -30,
-            -40, -20, 0, 0, 0, 0, -20, -40,
-            -50, -40, -30, -30, -30, -30, -40, -50,
-        ],
-        [
-            -50, -40, -30, -25, -25, -30, -40, -50,
-            -40, -20, -10, 0, 0, -10, -20, -40,
-            -30, -10, 5, 10, 10, 5, -10, -30,
-            -25, 0, 10, 15, 15, 10, 0, -25,
-            -25, 0, 10, 15, 15, 10, 0, -25,
-            -30, -10, 5, 10, 10, 5, -10, -30,
-            -40, -20, -10, 0, 0, -10, -20, -40,
-            -50, -40, -30, -25, -25, -30, -40, -50,
-        ],
-    ),
-    chess.BISHOP: (
-        [
-            -20, -10, -10, -10, -10, -10, -10, -20,
-            -10, 5, 0, 0, 0, 0, 5, -10,
-            -10, 10, 10, 10, 10, 10, 10, -10,
-            -10, 0, 10, 10, 10, 10, 0, -10,
-            -10, 5, 5, 10, 10, 5, 5, -10,
-            -10, 0, 5, 10, 10, 5, 0, -10,
-            -10, 0, 0, 0, 0, 0, 0, -10,
-            -20, -10, -10, -10, -10, -10, -10, -20,
-        ],
-        [
-            -15, -10, -8, -6, -6, -8, -10, -15,
-            -10, 0, 0, 2, 2, 0, 0, -10,
-            -8, 0, 6, 8, 8, 6, 0, -8,
-            -6, 2, 8, 10, 10, 8, 2, -6,
-            -6, 2, 8, 10, 10, 8, 2, -6,
-            -8, 0, 6, 8, 8, 6, 0, -8,
-            -10, 0, 0, 2, 2, 0, 0, -10,
-            -15, -10, -8, -6, -6, -8, -10, -15,
-        ],
-    ),
-    chess.ROOK: (
-        [
-            0, 0, 5, 10, 10, 5, 0, 0,
-            -5, 0, 0, 0, 0, 0, 0, -5,
-            -5, 0, 0, 0, 0, 0, 0, -5,
-            -5, 0, 0, 0, 0, 0, 0, -5,
-            -5, 0, 0, 0, 0, 0, 0, -5,
-            -5, 0, 0, 0, 0, 0, 0, -5,
-            5, 10, 10, 10, 10, 10, 10, 5,
-            0, 0, 0, 0, 0, 0, 0, 0,
-        ],
-        [
-            0, 0, 0, 2, 2, 0, 0, 0,
-            0, 0, 0, 2, 2, 0, 0, 0,
-            0, 0, 0, 2, 2, 0, 0, 0,
-            0, 0, 0, 2, 2, 0, 0, 0,
-            0, 0, 0, 2, 2, 0, 0, 0,
-            5, 5, 5, 8, 8, 5, 5, 5,
-            12, 12, 12, 12, 12, 12, 12, 12,
-            5, 5, 5, 5, 5, 5, 5, 5,
-        ],
-    ),
-    chess.QUEEN: (
-        [
-            -20, -10, -10, -5, -5, -10, -10, -20,
-            -10, 0, 5, 0, 0, 0, 0, -10,
-            -10, 5, 5, 5, 5, 5, 0, -10,
-            0, 0, 5, 5, 5, 5, 0, -5,
-            -5, 0, 5, 5, 5, 5, 0, -5,
-            -10, 0, 5, 5, 5, 5, 0, -10,
-            -10, 0, 0, 0, 0, 0, 0, -10,
-            -20, -10, -10, -5, -5, -10, -10, -20,
-        ],
-        [
-            -10, -8, -6, -4, -4, -6, -8, -10,
-            -8, 0, 2, 4, 4, 2, 0, -8,
-            -6, 2, 6, 8, 8, 6, 2, -6,
-            -4, 4, 8, 10, 10, 8, 4, -4,
-            -4, 4, 8, 10, 10, 8, 4, -4,
-            -6, 2, 6, 8, 8, 6, 2, -6,
-            -8, 0, 2, 4, 4, 2, 0, -8,
-            -10, -8, -6, -4, -4, -6, -8, -10,
-        ],
-    ),
-    chess.KING: (
-        [
-            20, 30, 10, 0, 0, 10, 30, 20,
-            20, 20, 0, 0, 0, 0, 20, 20,
-            -10, -20, -20, -20, -20, -20, -20, -10,
-            -20, -30, -30, -40, -40, -30, -30, -20,
-            -30, -40, -40, -50, -50, -40, -40, -30,
-            -30, -40, -40, -50, -50, -40, -40, -30,
-            -30, -40, -40, -50, -50, -40, -40, -30,
-            -30, -40, -40, -50, -50, -40, -40, -30,
-        ],
-        [
-            -50, -30, -30, -30, -30, -30, -30, -50,
-            -30, -25, 0, 0, 0, 0, -25, -30,
-            -30, -10, 20, 30, 30, 20, -10, -30,
-            -30, -10, 30, 40, 40, 30, -10, -30,
-            -30, -10, 30, 40, 40, 30, -10, -30,
-            -30, -10, 20, 30, 30, 20, -10, -30,
-            -30, -30, 0, 0, 0, 0, -30, -30,
-            -50, -30, -30, -30, -30, -30, -30, -50,
-        ],
-    ),
-}
-
-
-def _build_tables() -> tuple[list[list[int]], list[list[int]]]:
-    """One table per piece type per colour, with the black side mirrored top to bottom.
-
-    Each entry carries both game phases in a single integer, middlegame in the high half and
-    endgame in the low half, so the hot loop does one list index and one add per piece instead
-    of two of each. The halves never interfere because no reachable sum comes close to the
-    32768 bias: thirty-two pieces of at most 120 points cap the total below 4000.
-    """
-    white: list[list[int]] = [[0] * 64 for _ in range(7)]
-    black: list[list[int]] = [[0] * 64 for _ in range(7)]
-    for piece_type, (middlegame, endgame) in _PST_SOURCE.items():
-        for square in chess.SQUARES:
-            mirrored = chess.square_mirror(square)
-            white[piece_type][square] = middlegame[square] * _PST_PACK + endgame[square]
-            black[piece_type][square] = middlegame[mirrored] * _PST_PACK + endgame[mirrored]
-    return white, black
-
-
-_PST_PACK = 65536
-_PST_BIAS = _PST_PACK // 2
-_PST_WHITE, _PST_BLACK = _build_tables()
-# Piece type, its phase weight, and the attribute holding every piece of that type on the board.
-_PST_WALK = (
-    (chess.PAWN, 0, "pawns"),
-    (chess.KNIGHT, 1, "knights"),
-    (chess.BISHOP, 1, "bishops"),
-    (chess.ROOK, 2, "rooks"),
-    (chess.QUEEN, 4, "queens"),
-    (chess.KING, 0, "kings"),
-)
-
-
-def _phase(board: chess.Board) -> int:
-    """24 with all the pieces on, falling towards 0 as they come off."""
-    total = 0
-    for piece_type, units in _PHASE_UNITS.items():
-        total += units * chess.popcount(board.pieces_mask(piece_type, chess.WHITE))
-        total += units * chess.popcount(board.pieces_mask(piece_type, chess.BLACK))
-    return min(total, PHASE_TOTAL)
-
-
-def _piece_square_score(board: chess.Board) -> float:
-    """Tapered piece placement, positive for white.
-
-    The phase count rides along on the same walk rather than making a second pass over the
-    board, because this runs at every leaf and was a fifth of the evaluator on its own.
-    """
-    scan = chess.scan_forward
-    popcount = chess.popcount
-    white_pieces = board.occupied_co[chess.WHITE]
-    black_pieces = board.occupied_co[chess.BLACK]
-    packed = 0
-    phase = 0
-    for piece_type, units, attribute in _PST_WALK:
-        of_type = getattr(board, attribute)
-        white_mask = of_type & white_pieces
-        black_mask = of_type & black_pieces
-        if units:
-            phase += units * (popcount(white_mask) + popcount(black_mask))
-        table = _PST_WHITE[piece_type]
-        for square in scan(white_mask):
-            packed += table[square]
-        table = _PST_BLACK[piece_type]
-        for square in scan(black_mask):
-            packed -= table[square]
-    endgame = ((packed + _PST_BIAS) & (_PST_PACK - 1)) - _PST_BIAS
-    middlegame = (packed - endgame) // _PST_PACK
-    if phase > PHASE_TOTAL:
-        phase = PHASE_TOTAL
-    return (middlegame * phase + endgame * (PHASE_TOTAL - phase)) / PHASE_TOTAL
-
-
-def _passed_pawn_progress(board: chess.Board) -> float:
-    """Passed pawns weighted by how close they are to promoting, positive for white."""
-    return _passer_terms(board)[2]
-
-
-def _passer_terms(board: chess.Board) -> tuple[int, int, float]:
-    """White's passed pawn count, black's, and the white-view progress value of all of them.
-
-    Three things the flat count misses and the progress value pays for: how far the pawn has come,
-    whether one of our own pawns guards it, and whether anything is parked in front of it. Both
-    the counts and the value come from one walk over the pawns, because the passed-pawn test is
-    the expensive part and the two old functions each did it separately.
-    """
-    counts = [0, 0]
-    progress = 0.0
-    scan = chess.scan_forward
-    squares = chess.BB_SQUARES
-    occupied = board.occupied
-    for color, sign in ((chess.WHITE, 1.0), (chess.BLACK, -1.0)):
-        own_pawns = board.pawns & board.occupied_co[color]
-        enemy_pawns = board.pawns & board.occupied_co[not color]
-        spans = _PASSED_SPAN[color]
-        guards = chess.BB_PAWN_ATTACKS[not color]
-        white = color == chess.WHITE
-        count = 0
-        for square in scan(own_pawns):
-            if enemy_pawns & spans[square]:
-                continue
-            count += 1
-            rank = square >> 3
-            value = PASSED_RANK_BONUS[rank if white else 7 - rank]
-            if not value:
-                continue
-            # The squares a friendly pawn would guard this one from are the squares an enemy
-            # pawn standing here would attack.
-            if own_pawns & guards[square]:
-                value += PROTECTED_PASSER_BONUS
-            ahead = square + 8 if white else square - 8
-            if 0 <= ahead < 64 and occupied & squares[ahead]:
-                value *= BLOCKADED_PASSER_SCALE
-            progress += sign * value * PAWN_UNITS
-        counts[color] = count
-    return counts[chess.WHITE], counts[chess.BLACK], progress
-
-
-def _mating_drive(board: chess.Board, balance: float | None = None) -> float:
+def _mating_drive(board: chess.Board) -> float:
     """Positive when white should be herding a bare black king, negative for the reverse.
 
     Scored from white's point of view like every other term. Returns zero unless one side is a
@@ -722,8 +351,7 @@ def _mating_drive(board: chess.Board, balance: float | None = None) -> float:
         black_pawns = board.pawns & board.occupied_co[chess.BLACK]
     else:
         white_pawns = black_pawns = 0
-    if balance is None:
-        balance = _material(board)
+    balance = _material(board)
     if balance >= MATING_DRIVE_MIN_EDGE and not black_pawns:
         strong, weak, sign = chess.WHITE, chess.BLACK, 1.0
     elif balance <= -MATING_DRIVE_MIN_EDGE and not white_pawns:
@@ -741,151 +369,17 @@ def _mating_drive(board: chess.Board, balance: float | None = None) -> float:
     # 0 in the middle of the board, 3 in a corner: how far the losing king has been pushed out.
     from_centre = max(abs(2 * weak_file - 7), abs(2 * weak_rank - 7)) / 2.0
     between = chess.square_distance(strong_king, weak_king)
-    if board.occupied_co[weak] & ~board.kings:
-        return sign * (
-            MATING_DRIVE_EDGE_QUIET * from_centre + MATING_DRIVE_CLOSE_QUIET * (7 - between)
-        )
-
-    # Squares the bare king can actually step to: its own moves, minus anything the winning side
-    # covers. Costly to work out, and affordable only because this branch is a bare-king ending.
-    escape = board.attacks_mask(weak_king) & ~board.occupied_co[weak]
-    for square in chess.scan_forward(escape):
-        if board.is_attacked_by(strong, square):
-            escape &= ~chess.BB_SQUARES[square]
-    drive = (
-        MATING_DRIVE_EDGE * from_centre
-        + MATING_DRIVE_CLOSE * (7 - between)
-        + MATING_DRIVE_CONFINE * (8 - chess.popcount(escape))
-    )
+    drive = MATING_DRIVE_EDGE * from_centre + MATING_DRIVE_CLOSE * (7 - between)
     return sign * drive
 
 
-def _opening_queen_penalty(board: chess.Board) -> float:
-    """Discourage early queen development while leaving tactical queen moves available."""
-    if board.fullmove_number > 4:
-        return 0.0
-    white_queen = bool(board.queens & board.occupied_co[chess.WHITE])
-    black_queen = bool(board.queens & board.occupied_co[chess.BLACK])
-    score = 0.0
-    if white_queen and not board.queens & chess.BB_SQUARES[chess.D1]:
-        score -= OPENING_QUEEN_PENALTY
-    if black_queen and not board.queens & chess.BB_SQUARES[chess.D8]:
-        score += OPENING_QUEEN_PENALTY
-    return score
-
-
-def _opening_pawn_center_score(board: chess.Board) -> float:
-    """Pawns standing on and attacking the four inner squares, early on only.
-
-    The attack sets are built with shifts rather than by summing per-pawn attack masks. Summing
-    was wrong: two pawns that attack the same square, which is any two pawns a file apart, set
-    that bit twice and the carry moved it to a neighbouring square, so the control count was
-    quietly off in most positions. A union is what was meant.
-    """
-    if board.fullmove_number > 6:
-        return 0.0
-    white_pawns = board.pawns & board.occupied_co[chess.WHITE]
-    black_pawns = board.pawns & board.occupied_co[chess.BLACK]
-    white = chess.popcount(white_pawns & _INNER_CENTER_MASK)
-    black = chess.popcount(black_pawns & _INNER_CENTER_MASK)
-    white_attacks = ((white_pawns & ~chess.BB_FILE_A) << 7) | (
-        (white_pawns & ~chess.BB_FILE_H) << 9
-    )
-    black_attacks = ((black_pawns & ~chess.BB_FILE_A) >> 9) | (
-        (black_pawns & ~chess.BB_FILE_H) >> 7
-    )
-    white_control = chess.popcount(white_attacks & _INNER_CENTER_MASK)
-    black_control = chess.popcount(black_attacks & _INNER_CENTER_MASK)
-    return OPENING_PAWN_CENTER_WEIGHT * (white - black) + PAWN_CENTER_CONTROL_WEIGHT * (
-        white_control - black_control
-    )
-
-
-def _central_challenge_score(board: chess.Board) -> float:
-    """Own pawns bearing down on enemy pawns that hold the centre, positive for white.
-
-    About enemy *pawns*, not empty squares: an empty central square is already covered by the
-    control half of the opening term, while the pawn that actually holds d4 is the thing a lever
-    is aimed at, and nothing else here noticed it. Pawn capture attacks sit outside the mobility
-    count, so this does not re-pay for what mobility already sees.
-
-    The inner and outer squares are scored differently on purpose. Hitting d4 with a pawn on c5
-    earns full value while being hit back on c5 costs only a share of it, so the lever shows a
-    profit. Weighing both ends the same makes the term identically zero, because two diagonally
-    adjacent pawns always attack one another.
-
-    A whole set of pawns attacks in only two directions, so two shifts replace a walk over every
-    pawn, and this runs at every leaf. The file masks stop a pawn on the a file wrapping to h.
-    """
-    popcount = chess.popcount
-    white_pawns = board.pawns & board.occupied_co[chess.WHITE]
-    black_pawns = board.pawns & board.occupied_co[chess.BLACK]
-    white_hits = (
-        ((white_pawns & ~chess.BB_FILE_A) << 7) | ((white_pawns & ~chess.BB_FILE_H) << 9)
-    ) & black_pawns
-    black_hits = (
-        ((black_pawns & ~chess.BB_FILE_A) >> 9) | ((black_pawns & ~chess.BB_FILE_H) >> 7)
-    ) & white_pawns
-    inner = popcount(white_hits & _INNER_CENTER_MASK) - popcount(black_hits & _INNER_CENTER_MASK)
-    outer = popcount(white_hits & _OUTER_CENTER_MASK) - popcount(black_hits & _OUTER_CENTER_MASK)
-    return CENTRAL_CHALLENGE_WEIGHT * (inner + OUTER_CENTER_SHARE * outer)
-
-
-def _castling_rights_score(board: chess.Board) -> float:
-    if board.fullmove_number > 30:
-        return 0.0
-    rights = board.clean_castling_rights()
-    white = chess.popcount(rights & chess.BB_RANK_1)
-    black = chess.popcount(rights & chess.BB_RANK_8)
-    return CASTLING_RIGHTS_WEIGHT * (white - black)
-
-
 def _white_evaluation(board: chess.Board) -> float:
-    """The full static evaluation from white's point of view.
-
-    This is _features weighted and summed, plus the terms that sit outside the tuned feature set,
-    written out longhand. The tuple, the zip and the generator that used to do the weighting cost
-    about as much as the piece-square tables, and this runs at a third of all search nodes. The
-    additions are in the same order as before, so the floating point result is the same.
-    """
-    popcount = chess.popcount
-    white_attacks, white_mobility = _attack_summary(board, chess.WHITE)
-    black_attacks, black_mobility = _attack_summary(board, chess.BLACK)
-    white_doubled, white_isolated = _pawn_structure(board, chess.WHITE)
-    black_doubled, black_isolated = _pawn_structure(board, chess.BLACK)
-    not_kings = ~board.kings
-    hanging = float(
-        popcount(board.occupied_co[chess.BLACK] & not_kings & white_attacks & ~black_attacks)
-        - popcount(board.occupied_co[chess.WHITE] & not_kings & black_attacks & ~white_attacks)
+    features = _features(board)
+    weighted = sum(
+        weight * feature for weight, feature in zip(FEATURE_WEIGHTS, features, strict=True)
     )
-    material = _material(board)
-    white_passed, black_passed, passer_progress = _passer_terms(board)
-    weighted = (
-        MOBILITY_WEIGHT * float(white_mobility - black_mobility)
-        + MATERIAL_WEIGHT * material
-        + KING_SAFETY_WEIGHT * _king_safety_score(board)
-        + CENTER_WEIGHT * _center_score(board)
-        + ATTACK_WEIGHT * float(popcount(white_attacks) - popcount(black_attacks))
-        + HANGING_PIECE_WEIGHT * hanging
-        + PAWN_STRUCTURE_WEIGHT
-        * float((black_doubled + black_isolated) - (white_doubled + white_isolated))
-        + PASSED_PAWN_WEIGHT * float(white_passed - black_passed)
-        # The previous evaluator's "threats" term counted exactly the hanging pieces a second
-        # time, under a second weight. Keeping both entries keeps the tuned weights meaningful.
-        + THREAT_WEIGHT * hanging
-        + SPACE_WEIGHT * _space_score(board)
-    )
-    # Not tuned features: rules that only speak when the tuned ones have nothing to say.
-    return (
-        weighted
-        + PST_WEIGHT * _piece_square_score(board)
-        + passer_progress
-        + _mating_drive(board, material)
-        + _opening_queen_penalty(board)
-        + _opening_pawn_center_score(board)
-        + _castling_rights_score(board)
-        + _central_challenge_score(board)
-    )
+    # Not a tuned feature: a rule that only speaks when the tuned ones have nothing to say.
+    return weighted + _mating_drive(board)
 
 
 def evaluate(board: chess.Board) -> float:
@@ -929,35 +423,6 @@ def _capture_gain(board: chess.Board, move: chess.Move, victim: int) -> int:
     return gain
 
 
-def _opening_center_bonus(board: chess.Board, move: chess.Move) -> int:
-    if board.fullmove_number > 2 or board.piece_type_at(move.from_square) != chess.PAWN:
-        return 0
-    if move.to_square in {chess.D4, chess.E4, chess.D5, chess.E5}:
-        return OPENING_CENTER_BONUS
-    return 0
-
-
-def _opening_overextension_penalty(board: chess.Board, move: chess.Move) -> int:
-    if board.fullmove_number > 4 or board.piece_type_at(move.from_square) != chess.PAWN:
-        return 0
-    if move.to_square in {chess.D4, chess.E4, chess.D5, chess.E5}:
-        return 0
-    rank = chess.square_rank(move.to_square)
-    beyond_center = rank >= 4 if board.turn == chess.WHITE else rank <= 3
-    if not beyond_center:
-        return 0
-    home_squares = (
-        (chess.B1, chess.C1, chess.F1, chess.G1)
-        if board.turn == chess.WHITE
-        else (chess.B8, chess.C8, chess.F8, chess.G8)
-    )
-    undeveloped = any(
-        board.piece_type_at(square) in {chess.KNIGHT, chess.BISHOP}
-        for square in home_squares
-    )
-    return -OPENING_OVEREXTENSION_PENALTY if undeveloped else 0
-
-
 def _ordered_moves(board: chess.Board, tt_move: chess.Move | None, ply: int) -> list[chess.Move]:
     """Every legal move, best guess first: table move, good captures, killers, then history."""
     killers = _killers[ply] if ply <= MAX_PLY else [None, None]
@@ -975,10 +440,7 @@ def _ordered_moves(board: chess.Board, tt_move: chess.Move | None, ply: int) -> 
         elif move in killers:
             scored.append((KILLER_BONUS, move))
         else:
-            score = _history.get((turn, move.from_square, move.to_square), 0)
-            score += _opening_center_bonus(board, move)
-            score += _opening_overextension_penalty(board, move)
-            scored.append((score, move))
+            scored.append((_history.get((turn, move.from_square, move.to_square), 0), move))
     scored.sort(key=_first, reverse=True)
     return [move for _, move in scored]
 
@@ -1386,13 +848,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
         reached = depth
         if abs(best_score) > MATE_THRESHOLD:
             break
-        if (
-            reached >= DECISIVE_MIN_DEPTH
-            and best_score >= DECISIVE_ADVANTAGE
-            and chess.popcount(board.occupied) > DECISIVE_MIN_PIECES
-            # A lone enemy king means there is a mate to find, not a lead to sit on.
-            and board.occupied_co[not _root_turn] & ~board.kings
-        ):
+        if reached >= DECISIVE_MIN_DEPTH and best_score >= DECISIVE_ADVANTAGE:
             break
         if time.monotonic() - started_at > budget * NEXT_ITERATION_SHARE:
             break
