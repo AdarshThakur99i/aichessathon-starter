@@ -478,7 +478,7 @@ function canLift(name) {
 
 // Where a selected piece may go: really legal moves on our turn, premove geometry otherwise.
 function destinations(square) {
-  if (isOurTurn() && !game.premoves.length) {
+  if (isOurTurn()) {
     return game.chess.moves({ square, verbose: true }).map((m) => m.to);
   }
   return premoveTargets(position(), square);
@@ -510,15 +510,11 @@ function queuePremove(from, to) {
   return true;
 }
 
-// The move the player has asked for: played now on our turn, queued otherwise.
+// The move the player has asked for. On their turn it is played; off it, it is queued. Nothing
+// else decides this: the queue is always empty by the time it is their turn again, because
+// playPremove drains one the instant the engine's reply lands.
 function commit(from, to) {
-  return isOurTurn() && !game.premoves.length ? attempt(from, to) : queuePremove(from, to);
-}
-
-function clearPremoves() {
-  if (!game?.premoves.length) return;
-  game.premoves.length = 0;
-  drawBoard();
+  return isOurTurn() ? attempt(from, to) : queuePremove(from, to);
 }
 
 // Called once the engine has replied: take the front of the queue and play it. The engine's move
@@ -541,11 +537,9 @@ function onSquare(name) {
   if (!game || game.over) return;
   if (game.selected && game.selected !== name && commit(game.selected, name)) return;
   const piece = position().get(name);
-  const ours = Boolean(piece && piece.color === game.human[0]);
-  // A click that neither moves nor picks a piece up cancels whatever is queued. That is how the
-  // big sites behave, and it is the only cancel a touchscreen has.
-  if (!ours) game.premoves.length = 0;
-  game.selected = ours ? name : null;
+  // A click that is not a move and not a pick-up only puts the piece down. It must never discard
+  // what is queued: a move the player has made is theirs until they cancel it or it is played.
+  game.selected = piece && piece.color === game.human[0] ? name : null;
   drawBoard();
 }
 
@@ -562,11 +556,23 @@ const DRAG_THRESHOLD = 5;
 
 let drag = null;
 
+// Half a square of slack outside the rim. Releasing a piece a few pixels past the edge of the
+// board used to find no square at all and snap it home, which on the a-file and the far rank is
+// most of what "I let go and it did not go there" was. Beyond the slack it is still a cancel.
+const DROP_SLACK = 0.5;
+
 function squareFromPoint(clientX, clientY) {
   const box = el("board").getBoundingClientRect();
-  const file = Math.floor(((clientX - box.left) / box.width) * 8);
-  const rank = Math.floor(((clientY - box.top) / box.height) * 8);
-  if (file < 0 || file > 7 || rank < 0 || rank > 7) return null;
+  const slack = (box.width / 8) * DROP_SLACK;
+  const outside =
+    clientX < box.left - slack ||
+    clientX > box.right + slack ||
+    clientY < box.top - slack ||
+    clientY > box.bottom + slack;
+  if (outside) return null;
+  const clamp = (value) => Math.min(7, Math.max(0, Math.floor(value * 8)));
+  const file = clamp((clientX - box.left) / box.width);
+  const rank = clamp((clientY - box.top) / box.height);
   return squareName(rank * 8 + file, game.human === "black");
 }
 
