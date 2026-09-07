@@ -28,7 +28,11 @@ from pathlib import Path
 
 import chess
 
+# The Vercel runtime loads this file by path with only the project root importable, so the path is
+# set up by hand: the root so agent can be found, and this directory for the modules sitting next
+# to this one. Having only the root was a ModuleNotFoundError for _learn on every deployed request.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _learn
 import _ponder
 

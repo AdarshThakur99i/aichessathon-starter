@@ -287,7 +287,7 @@ async function ponderWhileThinking() {
         signal: controller.signal,
       });
       if (!response.ok) return;
-      if ((await response.json()).done) return;
+      if ((await readJson(response)).done) return;
     }
   } catch {
     // Aborted because the player moved, or the endpoint is not deployed. Either way pondering is
@@ -674,6 +674,23 @@ function checkOver() {
   return true;
 }
 
+// Read a response that ought to be JSON. A crashed serverless function answers with the
+// platform's own HTML error page, and calling .json() on that throws a parse error about the
+// first character, which buries the status and the platform's error code. So the body is taken as
+// text first and the status is always reported even when the body is unreadable.
+async function readJson(response) {
+  const body = await response.text();
+  let data = null;
+  try {
+    data = body ? JSON.parse(body) : null;
+  } catch {
+    const stripped = body.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
+    throw new Error(`HTTP ${response.status}${stripped ? ` - ${stripped}` : ""}`);
+  }
+  if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+  return data;
+}
+
 async function engineMove() {
   const engine = game.human === "white" ? "black" : "white";
   game.thinking = true;
@@ -688,8 +705,7 @@ async function engineMove() {
         time_left_ms: Math.round(game.clock[engine]),
       }),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    const data = await readJson(response);
     const move = game.chess.move(data.move);
     game.lastMove = move;
     game.moves.push(data.move);
